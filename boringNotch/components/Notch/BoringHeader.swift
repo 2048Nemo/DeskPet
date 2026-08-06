@@ -16,7 +16,9 @@ struct BoringHeader: View {
     var body: some View {
         HStack(spacing: 0) {
             HStack {
-                if (!tvm.isEmpty || coordinator.alwaysShowTabs) && Defaults[.boringShelf] {
+                // 宠物启用时始终显示 tab 栏（宠物与主页/AirDrop 平级切换，宠物为第一栏）；
+                // 否则按原版规则（Shelf 有内容或设置开启时显示）
+                if Defaults[.petEnabled] || ((!tvm.isEmpty || coordinator.alwaysShowTabs) && Defaults[.boringShelf]) {
                     TabSelectionView()
                 } else if vm.notchState == .open {
                     EmptyView()

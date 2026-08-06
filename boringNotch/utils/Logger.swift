@@ -23,7 +23,9 @@ struct Logger {
     ) {
         let fileName = (file as NSString).lastPathComponent
         let timestamp = ISO8601DateFormatter().string(from: Date())
-        print("\(category.rawValue) [\(timestamp)] [\(fileName):\(line)] \(function) - \(message)")
+        let output = "\(category.rawValue) [\(timestamp)] [\(fileName):\(line)] \(function) - \(message)\n"
+        // 输出到 stderr（无缓冲），确保重定向/日志文件中实时可见
+        FileHandle.standardError.write(output.data(using: .utf8) ?? Data())
     }
     
     static func trackMemory(

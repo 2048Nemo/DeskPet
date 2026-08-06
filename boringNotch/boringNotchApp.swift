@@ -37,6 +37,18 @@ struct DynamicNotchApp: App {
             }
             .keyboardShortcut(KeyEquivalent(","), modifiers: .command)
             CheckForUpdatesView(updater: updaterController.updater)
+            if Defaults[.petEnabled] {
+                Divider()
+                if PetManager.shared.lifeState == .atHome {
+                    Button("Let pet out") {
+                        PetManager.shared.leaveHome()
+                    }
+                } else {
+                    Button("Send pet home") {
+                        PetManager.shared.goHome()
+                    }
+                }
+            }
             Divider()
             Button("Restart Boring Notch") {
                 ApplicationRelauncher.restart()
@@ -85,6 +97,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         MusicManager.shared.destroy()
         cleanupDragDetectors()
         cleanupWindows()
+        PetWindowController.shared.hide()
         XPCHelperClient.shared.stopMonitoringAccessibilityAuthorization()
     }
 
@@ -421,6 +434,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         setupDragDetectors()
+
+        if Defaults[.petEnabled] {
+            PetWindowController.shared.show()
+        }
 
         if coordinator.firstLaunch {
             DispatchQueue.main.async {

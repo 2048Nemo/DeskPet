@@ -23,6 +23,7 @@ struct ContentView: View {
     @ObservedObject var batteryModel = BatteryStatusViewModel.shared
     @ObservedObject var brightnessManager = BrightnessManager.shared
     @ObservedObject var volumeManager = VolumeManager.shared
+    @ObservedObject var petManager = PetManager.shared
     @State private var hoverTask: Task<Void, Never>?
     @State private var isHovering: Bool = false
     @State private var anyDropDebounceTask: Task<Void, Never>?
@@ -349,6 +350,8 @@ struct ContentView: View {
                         NotchHomeView(albumArtNamespace: albumArtNamespace)
                     case .shelf:
                         ShelfView()
+                    case .pet:
+                        PetNotchView()
                     }
                 }
                 .transition(
@@ -503,6 +506,7 @@ struct ContentView: View {
     }
 
     private func doOpen() {
+        Logger.log("Notch opening (pet atHome=\(petManager.lifeState == .atHome))", category: .debug)
         withAnimation(animationSpring) {
             vm.open()
         }
@@ -526,6 +530,9 @@ struct ContentView: View {
             guard vm.notchState == .closed,
                   !coordinator.sneakPeek.show,
                   Defaults[.openNotchOnHover] else { return }
+            
+            // 保持原版规则：hover 打开不改变 currentView（默认显示原 notch 页面），
+            // 宠物与主页/AirDrop 通过顶部 tab 栏平级切换（宠物为第一栏）
             
             hoverTask = Task {
                 try? await Task.sleep(for: .seconds(Defaults[.minimumHoverDuration]))

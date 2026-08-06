@@ -51,6 +51,9 @@ struct SettingsView: View {
                 NavigationLink(value: "Shelf") {
                     Label("Shelf", systemImage: "books.vertical")
                 }
+                NavigationLink(value: "Pet") {
+                    Label("Pet", systemImage: "pawprint")
+                }
                 NavigationLink(value: "Shortcuts") {
                     Label("Shortcuts", systemImage: "keyboard")
                 }
@@ -85,6 +88,8 @@ struct SettingsView: View {
                     Charge()
                 case "Shelf":
                     Shelf()
+                case "Pet":
+                    PetSettings()
                 case "Shortcuts":
                     Shortcuts()
                 case "Extensions":
@@ -1790,6 +1795,108 @@ func warningBadge(_ text: String, _ description: String) -> some View {
                     .foregroundStyle(.secondary)
             }
             Spacer()
+        }
+    }
+}
+
+/// 桌面宠物设置
+struct PetSettings: View {
+    @Default(.petEnabled) var petEnabled
+    @Default(.petSkinDirectory) var petSkinDirectory
+    @Default(.petScale) var petScale
+    @Default(.petStatDecaySpeed) var petStatDecaySpeed
+    @Default(.petMusicDance) var petMusicDance
+    @Default(.petRoamInterval) var petRoamInterval
+    @State private var skinStatusText = ""
+
+    var body: some View {
+        Form {
+            Section {
+                Defaults.Toggle(key: .petEnabled) {
+                    Text("Enable desktop pet")
+                }
+                Defaults.Toggle(key: .petMusicDance) {
+                    Text("Dance while music is playing")
+                }
+            } header: {
+                Text("General")
+            } footer: {
+                Text("Your pet walks around your desktop. Double-click it to send it home into the notch, double-click again to let it out.")
+            }
+            Section {
+                Picker("Size", selection: $petScale) {
+                    Text("Small").tag(CGFloat(0.75))
+                    Text("Normal").tag(CGFloat(1.0))
+                    Text("Large").tag(CGFloat(1.5))
+                }
+                Picker("Stat decay speed", selection: $petStatDecaySpeed) {
+                    Text("Slow").tag(Double(0.5))
+                    Text("Normal").tag(Double(1.0))
+                    Text("Fast").tag(Double(2.0))
+                }
+                Picker("Roaming frequency", selection: $petRoamInterval) {
+                    Text("Calm").tag(Double(15))
+                    Text("Normal").tag(Double(10))
+                    Text("Hyper").tag(Double(5))
+                }
+            } header: {
+                Text("Behavior")
+            }
+            Section {
+                TextField("Skin folder", text: $petSkinDirectory)
+                    .textFieldStyle(.roundedBorder)
+                HStack {
+                    Button("Choose folder…") {
+                        let panel = NSOpenPanel()
+                        panel.canChooseDirectories = true
+                        panel.canChooseFiles = false
+                        panel.allowsMultipleSelection = false
+                        panel.prompt = "Choose"
+                        if panel.runModal() == .OK, let url = panel.url {
+                            petSkinDirectory = url.path
+                        }
+                    }
+                    Button("Reset") {
+                        petSkinDirectory = ""
+                    }
+                }
+                Label(skinStatusText.isEmpty ? "Skin status: check on launch" : skinStatusText, systemImage: "info.circle")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } header: {
+                Text("Skin (frame sequences)")
+            } footer: {
+                Text("Each action is a folder of numbered PNG frames: idle/, walk/, sleep/, eat/, happy/, hurt/, drag/, music/. Use the tools/frames_from_video.sh script to convert videos into frame sequences.")
+            }
+            Section {
+                Button("Open skin folder…") {
+                    NSWorkspace.shared.open(
+                        FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Pictures/BoringPet")
+                    )
+                }
+                Button("Re-load skin") {
+                    PetManager.shared.reloadSkin()
+                }
+            }
+        }
+        .onAppear {
+            updateSkinStatus()
+        }
+        .onChange(of: petSkinDirectory) { _ in
+            updateSkinStatus()
+        }
+        .onChange(of: petScale) { _ in
+            // 缩放变化 → 重新按显示尺寸解码帧
+            PetManager.shared.reloadSkin()
+        }
+        .formStyle(.grouped)
+    }
+
+    private func updateSkinStatus() {
+        if let skin = PetManager.shared.skin {
+            skinStatusText = "Loaded: \(skin.sourceURL.lastPathComponent) · \(skin.availableActions.count) actions · \(skin.totalFrameCount) frames"
+        } else {
+            skinStatusText = "No skin found — using placeholder. Create ~/Pictures/BoringPet (see PET.md)."
         }
     }
 }

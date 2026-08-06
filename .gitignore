@@ -53,3 +53,7 @@ build/
 *.xcarchive
 *.dSYM
 
+
+# SPM 验证构建产物（tools/spm_build.sh 生成，与 Xcode 项目无关，不提交）
+/Package.swift
+/Package.resolved

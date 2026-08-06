@@ -12,7 +12,7 @@ private let availableDirectories = FileManager
     .default
     .urls(for: .documentDirectory, in: .userDomainMask)
 let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-let bundleIdentifier = Bundle.main.bundleIdentifier!
+let bundleIdentifier = Bundle.main.bundleIdentifier ?? "theboringteam.boringnotch"
 let appVersion = "\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "") (\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? ""))"
 
 let temporaryDirectory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
@@ -199,4 +199,17 @@ extension Defaults.Keys {
     }
 
     static let didClearLegacyURLCacheV1 = Key<Bool>("didClearLegacyURLCache_v1", default: false)
+
+    // MARK: Desktop Pet
+    static let petEnabled = Key<Bool>("petEnabled", default: true)
+    /// 自定义素材目录；为空时使用默认目录（~/Pictures/BoringPet）或内置素材
+    static let petSkinDirectory = Key<String>("petSkinDirectory", default: "")
+    /// 宠物显示缩放
+    static let petScale = Key<CGFloat>("petScale", default: 1.0)
+    /// 属性衰减速度倍率（越大掉得越快）
+    static let petStatDecaySpeed = Key<Double>("petStatDecaySpeed", default: 1.0)
+    /// 音乐播放时跳舞
+    static let petMusicDance = Key<Bool>("petMusicDance", default: true)
+    /// 随机走动的频率（秒）：两次行为决策之间的最短待机时长
+    static let petRoamInterval = Key<Double>("petRoamInterval", default: 10.0)
 }

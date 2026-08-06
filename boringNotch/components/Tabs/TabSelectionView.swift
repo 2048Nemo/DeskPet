@@ -15,6 +15,7 @@ struct TabModel: Identifiable {
 }
 
 let tabs = [
+    TabModel(label: "Pet", icon: "pawprint.fill", view: .pet),
     TabModel(label: "Home", icon: "house.fill", view: .home),
     TabModel(label: "Shelf", icon: "tray.fill", view: .shelf)
 ]
