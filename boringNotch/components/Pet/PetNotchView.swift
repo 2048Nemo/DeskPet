@@ -7,14 +7,18 @@
 //  右侧信息面板（与日历同宽 215），交互元素保持靠上。
 //
 
+import Defaults
 import SwiftUI
 
 struct PetNotchView: View {
     @ObservedObject var pet = PetManager.shared
+    @Default(.petSoundVolume) var soundVolume
     @State private var zzzPulse = false
 
     var body: some View {
-        // 与 NotchHomeView.mainContent 相同的布局：HStack(alignment: .top, spacing: 15)
+        // 与 NotchHomeView.mainContent 一致的布局：HStack(alignment: .top, spacing: 15)，
+        // 不加 frame(maxWidth/maxHeight: .infinity) 约束 —— 让父容器 VStack 自然水平居中，
+        // 内容靠上排布（与主页/文件页同高，不撑满整个刘海高度）。
         HStack(alignment: .top, spacing: 15) {
             // 左侧：宠物卡片（90×90、圆角 13 —— 与专辑图 AlbumArtView 打开态一致）
             ZStack {
@@ -112,11 +116,28 @@ struct PetNotchView: View {
                 .font(.system(size: 12))
                 .controlSize(.small)
 
-                Spacer(minLength: 0)
+                // 音效音量滑块（独立于系统音量，避免宠物音效过吵）
+                HStack(spacing: 6) {
+                    Image(systemName: "speaker.wave.2.fill")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.secondary)
+                    Slider(value: $soundVolume, in: 0...1, step: 0.05)
+                        .controlSize(.mini)
+                        .onChange(of: soundVolume) { _, _ in
+                            pet.updateSoundVolume()
+                        }
+                    Text("\(Int(soundVolume * 100))%")
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 30, alignment: .trailing)
+                }
             }
             .frame(width: 215, alignment: .leading)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        // 撑满刘海内容区高度、顶部对齐 —— 与主页/文件页的内容垂直范围一致
+        // （主页靠 MusicControlsView 撑开高度，Pet 内容较少，需显式对齐避免视觉下沉）。
+        // 水平方向不约束宽度，由父 VStack 居中。
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         // 与主页（NotchHomeView）一致的页面切换动画：淡入淡出
         .transition(.opacity)
     }

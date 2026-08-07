@@ -39,6 +39,8 @@ enum HideNotchOption: String, Defaults.Serializable {
 // Define notification names at file scope
 extension Notification.Name {
     static let mediaControllerChanged = Notification.Name("mediaControllerChanged")
+    /// 拖宠物进入刘海展开区 → 打开刘海并切换到 Pet 页（由 PetManager 发出，AppDelegate 监听）
+    static let openNotchToPet = Notification.Name("openNotchToPet")
 }
 
 // Media controller types for selection in settings
@@ -212,4 +214,6 @@ extension Defaults.Keys {
     static let petMusicDance = Key<Bool>("petMusicDance", default: true)
     /// 随机走动的频率（秒）：两次行为决策之间的最短待机时长
     static let petRoamInterval = Key<Double>("petRoamInterval", default: 10.0)
+    /// 宠物动作音效音量（0.0–1.0）：独立于系统音量，避免宠物音效过吵
+    static let petSoundVolume = Key<Double>("petSoundVolume", default: 0.7)
 }

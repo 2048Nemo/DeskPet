@@ -59,6 +59,10 @@ final class PetManager: ObservableObject {
     @Published var windowPosition: CGPoint?
     @Published var windowAlpha: Double = 1
 
+    /// 当前是否正悬停在"刘海投放区"（拖拽中）。用于去重 + 决定松手后是否保持刘海打开。
+    /// 由 PetContentView 拖拽时每帧调用 evaluateNotchDropHover 更新。
+    @Published private(set) var isHoveringNotchDropZone = false
+
     // MARK: - 皮肤
     private(set) var skin: PetSkin?
 
@@ -72,6 +76,61 @@ final class PetManager: ObservableObject {
     /// 是否正在回窝途中（走回/淡出阶段，供外部判断：此时也不该被 hover 打开 notch）
     var isHomeTransitioning: Bool {
         movingHome
+    }
+
+    // MARK: - 拖拽投放刘海（拖宠物到刘海展开区 → 打开 Pet 页）
+
+    /// 刘海展开区（与 DragDetector 的 notchRegion 同算法）：homeScreen 顶部居中的
+    /// openNotchSize（640×190）矩形。拖宠物进入该区域即触发"打开刘海到 Pet 页"。
+    private func notchDropRegion() -> CGRect? {
+        guard let screen = homeScreen() else { return nil }
+        let f = screen.frame
+        return CGRect(
+            x: f.midX - openNotchSize.width / 2,
+            y: f.maxY - openNotchSize.height,
+            width: openNotchSize.width,
+            height: openNotchSize.height
+        )
+    }
+
+    /// 拖拽期间每帧调用：判定鼠标是否进入刘海展开区。
+    /// - 进入（首次）：提级宠物窗口（盖在刘海之上，拖拽全程可见）+ 发 .openNotchToPet 通知
+    ///   （AppDelegate 打开刘海 + 切 Pet 页）。
+    /// - 离开：恢复宠物窗口层级。刘海的关闭由 ContentView 读取 isHoveringNotchDropZone
+    ///   统一抑制（拖拽悬停期间不关闭），避免提级遮挡 hover 导致的"打开后立即关闭"。
+    func evaluateNotchDropHover(at point: CGPoint) {
+        let inside = notchDropRegion()?.contains(point) ?? false
+        if inside, !isHoveringNotchDropZone {
+            isHoveringNotchDropZone = true
+            // 提级：宠物盖在刘海窗口（.mainMenu+3）之上，拖拽全程可见
+            PetWindowController.shared.elevateLevel()
+            // 通知 AppDelegate 打开刘海并切到 Pet 页（携带屏幕 UUID 支持多屏）
+            let uuid = BoringViewCoordinator.shared.selectedScreenUUID
+            NotificationCenter.default.post(name: .openNotchToPet, object: uuid.isEmpty ? nil : uuid)
+            Logger.log("Pet drag entered notch drop zone — opening Pet view", category: .ui)
+        } else if !inside, isHoveringNotchDropZone {
+            isHoveringNotchDropZone = false
+            PetWindowController.shared.restoreLevel()
+            Logger.log("Pet drag left notch drop zone", category: .ui)
+        }
+    }
+
+    /// 拖拽松手后调用。
+    /// - 若松手时仍在刘海投放区内：瞬间进窝（snapHome，无走回动画），刘海保持打开。
+    /// - 否则：仅恢复窗口层级，宠物在松手位置落地。
+    /// 返回 true 表示触发了进窝（调用方据此决定后续，如不再做落地动画）。
+    @discardableResult
+    func exitNotchDropHover() -> Bool {
+        guard isHoveringNotchDropZone else { return false }
+        isHoveringNotchDropZone = false
+        // 进窝前先恢复窗口层级：宠物即将淡出消失，不再需要盖在刘海之上；
+        // 且层级恢复后刘海窗口能正常接收 hover，松手后鼠标在刘海区域内 → 刘海保持打开，
+        // 鼠标移出 → 由 ContentView 现有 hover 逻辑自动关闭。
+        PetWindowController.shared.restoreLevel()
+        // 松手在刘海区域内 → 瞬间归位进窝（跳过走回动画）
+        snapHome()
+        Logger.log("Pet dropped on notch — snapped home", category: .lifecycle)
+        return true
     }
 
     /// 回窝/出窝目标屏：优先刘海窗口所在屏（selectedScreenUUID），保证宠物与刘海头像同屏；
@@ -122,8 +181,11 @@ final class PetManager: ObservableObject {
     private var movementMode: PetMovementMode = .floor
     /// 爬墙速度（pt/s）
     private let climbSpeed: CGFloat = 42
-    /// 重力加速度（pt/s²）
-    private let gravity: CGFloat = 1600
+    /// 重力加速度（pt/s²）。
+    /// 调低以匹配 fall 动画时长：fall 素材 105 帧 × 24fps = 4.4 秒，
+    /// gravity=1600 时掉落仅 ~1 秒就落地，动画只播 1/4 就被切断。
+    /// gravity=500 时掉落 ~1.8 秒，fall 动画能播到 ~40%，体感自然不仓促。
+    private let gravity: CGFloat = 500
     /// 掉落当前速度（pt/s，向上为正）
     private var fallVelocity: CGFloat = 0
     /// 倒挂剩余秒数
@@ -188,7 +250,10 @@ final class PetManager: ObservableObject {
         tickCount += 1
 
         // 1. 音乐联动：仅地面活动时跳舞（爬墙/倒挂/掉落/晕眩期间不打断小把戏）
-        if Defaults[.petMusicDance] && MusicManager.shared.isPlaying && movementMode == .floor {
+        // 必须有真实跳舞素材才激活——否则切到 .music 只会显示 idle 兜底帧，
+        // 且 AI 决策（要求 action == .idle）被冻结，宠物会一直站着不走动
+        if Defaults[.petMusicDance] && (skin?.hasRealMaterial(.music) ?? false)
+            && MusicManager.shared.isPlaying && movementMode == .floor {
             if !wasMusicPlaying {
                 wasMusicPlaying = true
                 walkTarget = nil
@@ -262,7 +327,13 @@ final class PetManager: ObservableObject {
                 lifeState = .atHome
                 movingHome = false
                 Logger.log("fadeout done → atHome", category: .debug)
-                setAction(.idle)
+                // 回窝后切 .home（显示睡眠姿势），不是 .idle。
+                // 若用 .idle，animTick 每帧请求 idle 帧会触发播放加载（isPrefetch=false），
+                // 绕过 homeOnlyMode 拦截，把刚 trim 清掉的 idle（170帧≈194MB）又加载回来。
+                // .home 仅 1 帧，且 homeOnlyMode 允许加载，内存可控。
+                setAction(.home)
+                // 回窝节能：卸载所有活动动作帧，只保留 .home + .fall（出窝动画）。
+                skin?.trimToHomeOnly()
             } else if !movingHome, next >= 1 {
                 windowAlpha = 1
                 fading = false
@@ -288,6 +359,7 @@ final class PetManager: ObservableObject {
             return
         }
         let count = frames.count
+        let total = skin?.totalFrameCount(action, variant: currentVariant) ?? count
         let fps = skin?.fps[action] ?? action.defaultFPS
         let isLoop = (skin?.loops[action] ?? (action.loopsByDefault ? -1 : 1)) < 0
         frameProgress += tick * fps
@@ -295,25 +367,42 @@ final class PetManager: ObservableObject {
         if isLoop {
             // 组内无缝循环：第一轮播完整 0..末帧（含"站立→起步"段），
             // 之后在 [loopPoint, 末帧] 区间循环——loopPoint 是签名匹配出的
-            // "与末帧姿势最接近的帧"，绕回时不再跳回第 0 帧
+            // "与末帧姿势最接近的帧"，绕回时不再跳回第 0 帧。
+            // 注意：部分帧缓存时 count 可能 < total，循环用 count（已缓存帧），
+            // 流式补齐会持续追加，count 会增长到 total。
             let loopPoint = skin?.loopPoint(for: action, variant: currentVariant) ?? 0
+            // 部分帧缓存时（count < total）不用 loopPoint——loopPoint 是用全量签名算的，
+            // 可能 > count，直接用会越界。等流式补齐全（count == total）后才启用无缝循环。
             let idx: Int
-            if loopPoint > 0, frameProgress >= Double(count) {
+            if count >= total, loopPoint > 0, frameProgress >= Double(count) {
                 idx = loopPoint + Int(frameProgress - Double(count)) % (count - loopPoint)
             } else {
                 idx = Int(frameProgress) % count
             }
-            currentFrame = frames[idx]
-            lastFrameIndex = idx
+            // 只在帧真正变化时赋值（24fps 动画 + 60fps tick，2/3 的 tick 帧不变）。
+            // 避免每帧都触发 @Published → SwiftUI 重绘，节省 ~60% 的渲染 CPU。
+            if idx != lastFrameIndex {
+                currentFrame = frames[idx]
+                lastFrameIndex = idx
+            }
+            // 流式补齐：播放接近缓存末尾时，后台解码下一批帧追加
+            skin?.backfillIfNeeded(action: action, variant: currentVariant, currentIndex: idx)
         } else {
+            // 一次性动作：idx 不超过已缓存帧数（count），用 total 判断是否真正播完
             let idx = min(Int(frameProgress), count - 1)
-            currentFrame = frames[idx]
-            lastFrameIndex = idx
+            if idx != lastFrameIndex {
+                currentFrame = frames[idx]
+                lastFrameIndex = idx
+            }
+            // 流式补齐：播放接近缓存末尾时，后台解码下一批帧追加
+            skin?.backfillIfNeeded(action: action, variant: currentVariant, currentIndex: idx)
             // 一次性动作播完 → 按动作编排自然过渡：
             //   打哈欠 → 睡觉（先打哈欠再入睡，不直接跳）
             //   睡觉 → 保持睡着数秒（冻结在末帧）→ 醒来回 idle
             //   其他一次性动作 → 直接回 idle
-            if idx >= count - 1 {
+            // 注意：用 total（素材总帧数）判断播完，不是 count（缓存帧数）。
+            // 部分帧缓存时 count < total，必须等流式补齐全全部帧后才算播完。
+            if Int(frameProgress) >= total - 1 {
                 if action == .yawn && pendingSleep {
                     pendingSleep = false
                     frameProgress = 0
@@ -338,6 +427,13 @@ final class PetManager: ObservableObject {
             if idleCounter <= 0 {
                 decideNextBehavior()
             }
+        }
+
+        // 状态诊断日志（每 5 秒一条，观察走动逻辑：action/lifeState 是否正常流转）
+        if tickCount % 300 == 0 {
+            NSLog("[Pet] action=%@ lifeState=%@ musicPlaying=%d dragging=%d movingHome=%d fading=%d floor=%d alpha=%.2f walkTarget=%@ idleCounter=%.1f",
+                  action.rawValue, lifeState.rawValue, wasMusicPlaying, isDragging, movingHome, fading,
+                  movementMode == .floor, windowAlpha, walkTarget != nil ? "set" : "nil", idleCounter)
         }
     }
 
@@ -481,18 +577,20 @@ final class PetManager: ObservableObject {
         Logger.log("Pet interrupted — falling", category: .debug)
     }
 
-    /// 落地：速度快则弹跳一次，慢则直接回 idle（不做晕眩转圈）
+    /// 落地：速度快则弹跳一次，慢则停止物理运动，但**不立即切 idle**。
+    /// 让 fall 动画继续播完剩余帧（落地→站起来的完整序列），由 animTick 的一次性播完逻辑
+    /// 自然衔接到 idle。这样用户能看到完整的"掉落→落地→站立→待机"过渡，而不是物理一落地就 cut。
     private func land() {
-        if abs(fallVelocity) > 220 {
-            // 弹跳：反弹 35% 速度，再落一次
-            fallVelocity = -fallVelocity * 0.35
+        if abs(fallVelocity) > 300 {
+            // 弹跳：反弹 25% 速度，再落一次（衰减更狠，避免低重力下多次弹跳拖长）
+            fallVelocity = -fallVelocity * 0.25
         } else {
             fallVelocity = 0
             movementMode = .floor
             lifeState = .roaming
-            setAction(.idle)
-            resetIdleCounter()
-            Logger.log("Pet landed", category: .debug)
+            // 不切 idle！保持 action = .fall，让 fall 动画继续播完剩余帧（站立姿态），
+            // 播完后 animTick 一次性动作逻辑会自动切 idle。
+            Logger.log("Pet landed — fall animation continuing to completion", category: .debug)
         }
     }
 
@@ -526,6 +624,34 @@ final class PetManager: ObservableObject {
         setAction(.walk)
     }
 
+    /// 瞬间进窝：跳过"走回"动画，直接定位到刘海正下方并淡出。
+    /// 用于拖拽投放场景——用户已经把宠物拖到刘海区域，松手即归位，不需要再走回去。
+    func snapHome() {
+        guard lifeState == .roaming, !movingHome else {
+            Logger.log("snapHome rejected: roaming=\(lifeState == .roaming) movingHome=\(movingHome)", category: .warning)
+            return
+        }
+        guard let screen = homeScreen() else {
+            Logger.log("snapHome rejected: no target screen", category: .warning)
+            return
+        }
+        Logger.log("Pet snapped home (no walk)", category: .lifecycle)
+        walkTarget = nil
+        movingHome = true
+        movementMode = .floor
+        dizzyAngle = 0
+        let size = windowSize
+        let inset = notchTopInset(screen)
+        // 瞬间定位到回窝目标点（与 goHome 同一坐标），随后由 fading 机制淡出
+        windowPosition = CGPoint(
+            x: screen.frame.midX - size.width / 2,
+            y: screen.frame.maxY - inset - size.height - 4
+        )
+        // 直接进入淡出（不经走路），beginHomeFadeout 会设 fading=true + 切 idle
+        beginHomeFadeout()
+    }
+
+
     /// 从刘海出窝：以「从刘海掉落出场」的方式回到桌面 —— 出现在屏幕顶部（真刘海下方），
     /// 播放下落素材（fall）并自由落体到地面，落地后恢复活动。
     func leaveHome() {
@@ -533,11 +659,13 @@ final class PetManager: ObservableObject {
         Logger.log("Pet leaving home — dropping from notch", category: .lifecycle)
         let size = windowSize
         movementMode = .floor
-        // 出现在刘海正下方（真刘海屏则再下移避开物理遮挡）
+        // 出窝初始位置：宠物顶部大幅超出屏幕顶（200pt 探出，最终确认值），
+        // 视觉上像从屏幕顶端"探出来"再掉落，有完整的上半程入画效果。
+        // 真刘海屏则下移避开物理遮挡（刘海区域物理无像素）。
         let inset = notchTopInset(screen)
         windowPosition = CGPoint(
             x: screen.frame.midX - size.width / 2,
-            y: screen.frame.maxY - inset - size.height - 6
+            y: screen.frame.maxY - inset - size.height + 200
         )
         windowAlpha = 1
         movingHome = false
@@ -644,8 +772,12 @@ final class PetManager: ObservableObject {
         // 预取下一个很可能用到的动作（后台解码，避免切换时卡顿）
         switch newAction {
         case .idle:
-            // 高频即时动作全部预取（含全部变体）——走路/哈欠/拖拽/点击反应/出场
-            skin?.prefetch([.walk, .yawn, .drag, .happy, .hurt, .fall])
+            // 回窝后不预取活动动作（已由 trimToHomeOnly 卸载，预取会把它们填回来）。
+            // idle 预取只在 roaming 状态下有意义（为下一次行为 AI 决策准备）。
+            // idle 也在列表里：加载全部变体的 trailer 帧，实现待机变体轮换。
+            if lifeState == .roaming {
+                skin?.prefetch([.idle, .walk, .yawn, .drag, .happy, .hurt, .fall])
+            }
         case .yawn where pendingSleep:
             skin?.prefetch([.sleep])
         default:
@@ -678,9 +810,16 @@ final class PetManager: ObservableObject {
                 guard let self, let sound else { return }
                 self.soundPlayer?.stop()
                 self.soundPlayer = sound
-                sound.volume = 0.7
+                // 音量由设置项控制（0.0–1.0），独立于系统音量
+                sound.volume = Float(Defaults[.petSoundVolume])
                 sound.play()
             }
         }
+    }
+
+    /// 实时调节当前播放音效的音量（设置滑块拖动时调用，无需等下次播放）。
+    /// 若当前无音效播放，下次 playSound 时会用新音量。
+    func updateSoundVolume() {
+        soundPlayer?.volume = Float(Defaults[.petSoundVolume])
     }
 }

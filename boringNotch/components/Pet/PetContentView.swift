@@ -88,6 +88,8 @@ struct PetContentView: View {
                                 y: mouse.y - size.height / 2
                             )
                         )
+                        // 拖拽投放刘海：鼠标进入刘海展开区时打开 Pet 页 + 提级宠物窗口
+                        pet.evaluateNotchDropHover(at: mouse)
                     }
                 }
                 .onEnded { value in
@@ -95,6 +97,12 @@ struct PetContentView: View {
                         pet.endDrag()
                         // 拖拽结束后同步内部位置，避免继续走动时跳回旧位置
                         pet.syncWindowPosition(PetWindowController.shared.currentOrigin)
+                        // 松手处理：在刘海投放区内 → 进窝归位（goHome，刘海保持 Pet 页打开）；
+                        // 否则 → 宠物在松手位置落地。
+                        if !pet.exitNotchDropHover() {
+                            // 未在刘海区域：恢复窗口层级（若曾被提级），宠物正常落地
+                            PetWindowController.shared.restoreLevel()
+                        }
                     } else if hypot(value.translation.width, value.translation.height) < 3 {
                         handleClick()
                     } else {

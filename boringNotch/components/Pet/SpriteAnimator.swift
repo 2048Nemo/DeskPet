@@ -56,6 +56,28 @@ final class PetSkin {
     /// 已播放（物化）过的动作：物化占大内存，预取完成后受淘汰约束；
     /// 未播放的预取动作只是解码产物（便宜），可常驻备用
     private var played: Set<PetAction> = []
+    /// 当前预取集合（由 prefetch() 设置）：这些动作是 idle 后的候选，必须常驻。
+    /// 解决循环淘汰 bug：播放过的 walk/yawn 等高频动作在预取时会被 storeLoaded 的
+    /// 淘汰逻辑错误排除（因为它们在 played 里），导致每次切换都重新加载（1.4-2s 延迟）。
+    /// 修复：预取列表里的动作无论是否播放过，都纳入 keep 集合保留。
+    private var prefetched: Set<PetAction> = []
+    /// 回窝节能模式标志：trimToHomeOnly() 置 true，出窝时（prefetch）置 false。
+    /// storeLoaded 检查此标志：回窝期间后台预取陆续完成时，拒绝非 [home, fall] 的动作入缓存，
+    /// 否则 trim 清完后预取又把帧填回来（实测内存不降）。
+    private var homeOnlyMode = false
+
+    // MARK: 部分帧预缓存 + 流式补齐
+    /// 预缓存时每个动作只解码的前导帧数（位图）。
+    /// 按一秒播放量缓存：24fps × 1秒 = 24 帧（缓冲 1 秒），后台解码 7-10ms/帧，
+    /// 这段时间能解码 100-140 帧，远超播放消耗，触发动作时零感知延迟、零卡顿。
+    private let trailerFrameCount = 24
+    /// 流式补齐的批量大小：每次后台解码追加多少帧。
+    /// 24 帧 × ~8ms = 192ms 解码，而播放完 24 帧需 1 秒，解码远快于播放。
+    private let backfillBatch = 24
+    /// 标记"部分加载"的动作变体（"action_variant"）：位图不完整，需要流式补齐。
+    private var partialLoaded: Set<String> = []
+    /// 正在后台补齐的动作变体（防重复触发）。
+    private var backfilling: Set<String> = []
     /// 降采样解码的最大边长（按显示尺寸计算，视网膜 2x）
     let maxPixelSize: Int
     /// 每个动作的帧率
@@ -76,6 +98,20 @@ final class PetSkin {
     var totalFrameCount: Int { variantURLs.values.flatMap { $0.flatMap { $0 } }.count }
     /// 某动作的变体数（用于 PetManager 随机选变体）
     func variantCount(_ action: PetAction) -> Int { variantURLs[action]?.count ?? 0 }
+
+    /// 某动作指定变体的**总帧数**（素材全集，不受部分缓存影响）。
+    /// 用于 animTick 判断"一次性动作是否播完"——部分帧缓存时 frames.count 只有 trailer 数，
+    /// 不能用它判断播完，否则 happy 还没播完就回 idle 了。
+    func totalFrameCount(_ action: PetAction, variant: Int) -> Int {
+        variantURLs[action]?[safe: variant]?.count ?? 0
+    }
+
+    /// 是否有真实素材（不含兜底动作）：没有真实素材的动作不应激活
+    /// （如无跳舞素材时 music 联动会退化成 idle 帧 + 冻结行为 AI，应直接跳过）
+    func hasRealMaterial(_ action: PetAction) -> Bool {
+        if let v = variantURLs[action], !v.isEmpty, !v[0].isEmpty { return true }
+        return false
+    }
 
     /// 组内循环衔接点：循环绕回时从该帧续接（0 表示无衔接点，用原始 % count 行为）
     func loopPoint(for action: PetAction, variant: Int) -> Int {
@@ -144,21 +180,103 @@ final class PetSkin {
         return fallbackFrames(for: action)
     }
 
-    /// 预取动作帧（后台解码，不阻塞主线程）。
-    /// 加载该动作的**全部变体**——变体选择是随机的，只预取 variant 0 会让
-    /// 随机到其他变体时延迟（窗口已动、动画未就绪）。预取未物化时内存极小
-    /// （855 帧解码产物约 +74MB，物化只发生在播放时）。
+    /// 预取动作帧（部分帧预缓存策略）。
+    /// 每个动作只解码前 trailerFrameCount 帧位图（贵，1.14MB/帧）+ 全部帧签名（便宜，2KB/帧）。
+    /// 签名全量计算保证 loopPoint 正确；位图部分缓存让触发瞬间有帧可播，后续流式补齐。
+    /// 内存：7 动作 × 10 帧 ≈ 80帧 ≈ 92MB（vs 全量预取 813帧 ≈ 490MB）。
+    /// 单变体加载（preferredVariant 优先选已缓存变体），多变体省内存。
     func prefetch(_ actions: [PetAction]) {
+        prefetched = Set(actions)
+        // 出窝恢复活动：清除回窝节能标志（出窝后 setAction(.idle) 会触发此预取）
+        homeOnlyMode = false
         for action in actions {
             guard let variants = variantURLs[action], !variants.isEmpty else { continue }
-            for (vi, urls) in variants.enumerated() where !urls.isEmpty {
-                if cache[action]?[safe: vi]?.isEmpty == false { continue }
-                let key = "\(action.rawValue)_\(vi)"
-                if loading.contains(key) { continue }
-                loading.insert(key)
-                startLoad(action, variant: vi, urls: urls, isPrefetch: true)
+            if action == .idle {
+                // idle 是常驻待机，需要变体轮换：预取**全部变体**的 trailer 帧，
+                // preferredVariant 就能在已缓存变体间随机切换（避免一直播同一套待机）。
+                // 内存：4 变体 × 24 帧 × 0.38MB ≈ 36MB，可接受。
+                for (vi, urls) in variants.enumerated() where !urls.isEmpty {
+                    if let existing = cache[action]?[safe: vi], existing.count >= urls.count { continue }
+                    let key = "\(action.rawValue)_\(vi)"
+                    if !loading.contains(key) {
+                        loading.insert(key)
+                        startPartialLoad(action, variant: vi, urls: urls, trailer: trailerFrameCount)
+                    }
+                }
+            } else {
+                // 其他动作：只加载第一个变体（与 preferredVariant 的"优先已缓存"配合，保证命中）
+                if let urls = variants.first(where: { !$0.isEmpty }) {
+                    let key = "\(action.rawValue)_0"
+                    if !loading.contains(key) {
+                        loading.insert(key)
+                        startPartialLoad(action, variant: 0, urls: urls, trailer: trailerFrameCount)
+                    }
+                }
             }
         }
+    }
+
+    /// 部分帧加载：后台计算全部帧签名 + 解码前 trailer 帧位图。
+    /// 签名（32px）便宜全量计算；位图（640px）只取前几帧，触发后由 backfillIfNeeded 流式补齐。
+    private func startPartialLoad(_ action: PetAction, variant: Int, urls: [URL], trailer: Int) {
+        let maxPixel = maxPixelSize
+        let key = "\(action.rawValue)_\(variant)"
+        let trailerCount = min(trailer, urls.count)
+        Task.detached(priority: .userInitiated) { [weak self] in
+            // 1. 全部帧算签名（32px，便宜）
+            let allSigs = urls.map { PetSkin.frameSignature(from: $0) }
+            // 2. 前 trailer 帧解码位图（640px，贵）
+            let trailerUrls = Array(urls.prefix(trailerCount))
+            let trailerImages = trailerUrls.compactMap { PetSkin.decodeDownscaled($0, maxPixel: maxPixel) }
+            guard let self else { return }
+            await MainActor.run {
+                self.storePartialLoaded(action, variant: variant,
+                                        trailerImages: trailerImages,
+                                        allSignatures: allSigs,
+                                        totalFrames: urls.count, key: key)
+            }
+        }
+    }
+
+    /// 存储部分帧预缓存结果：前 trailer 帧位图 + 全量签名 + 标记 partialLoaded。
+    private func storePartialLoaded(_ action: PetAction, variant: Int,
+                                     trailerImages: [NSImage], allSignatures: [[Float]],
+                                     totalFrames: Int, key: String) {
+        loading.remove(key)
+        guard !trailerImages.isEmpty else { return }
+        // 回窝节能模式：拒绝非 [home, fall] 入缓存
+        if homeOnlyMode, action != .home, action != .fall {
+            Logger.log("storePartialLoaded \(action.rawValue)_\(variant) dropped — homeOnlyMode", category: .memory)
+            return
+        }
+        // 淘汰非预取/非核心动作，保留空间
+        let keep = Self.coreActions.union(prefetched).union([action])
+        cache = cache.filter { keep.contains($0.key) }
+        self.signatures = self.signatures.filter { keep.contains($0.key) }
+
+        // 存入部分帧位图（前 trailer 帧）
+        var variants = cache[action] ?? []
+        while variants.count <= variant { variants.append([]) }
+        variants[variant] = trailerImages
+        cache[action] = variants
+
+        // 存入全量签名（用于 loopPoint 计算）
+        var sigs = self.signatures[action] ?? []
+        while sigs.count <= variant { sigs.append([]) }
+        sigs[variant] = allSignatures
+        self.signatures[action] = sigs
+
+        // 预计算 loopPoint（签名全量，loopPoint 正确）
+        var loopPts = loopPoints[action] ?? []
+        while loopPts.count <= variant { loopPts.append(0) }
+        loopPts[variant] = Self.computeLoopPoint(allSignatures)
+        loopPoints[action] = loopPts
+
+        // 标记需要流式补齐（位图不完整）
+        if trailerImages.count < totalFrames {
+            partialLoaded.insert("\(action.rawValue)_\(variant)")
+        }
+        Logger.log("partial loaded \(action.rawValue)_\(variant): \(trailerImages.count)/\(totalFrames) frames (loopPoint=\(loopPts[variant]))", category: .debug)
     }
 
     /// 变体选择：优先已缓存变体（避免播放加载延迟），全部未缓存时随机
@@ -183,6 +301,75 @@ final class PetSkin {
         let keep = Self.coreActions.union([action])
         cache = cache.filter { keep.contains($0.key) }
         self.signatures = self.signatures.filter { keep.contains($0.key) }
+    }
+
+    // MARK: - 流式补齐
+
+    /// 当播放进度接近已缓存帧末尾时，后台解码下一批帧追加到缓存。
+    /// 由 PetManager.animTick 每帧调用检查。只在 partialLoaded 动作上有开销。
+    /// 解码 7-10ms/帧 vs 播放 41.7ms/帧，解码远快于播放，永远不会追不上。
+    func backfillIfNeeded(action: PetAction, variant: Int, currentIndex: Int) {
+        let key = "\(action.rawValue)_\(variant)"
+        guard partialLoaded.contains(key) else { return }
+        guard backfilling.contains(key) == false else { return }
+        guard let cached = cache[action]?[safe: variant], !cached.isEmpty else { return }
+        guard let urls = variantURLs[action]?[safe: variant], !urls.isEmpty else { return }
+        // 已全部加载 → 标记完成，不再补齐
+        if cached.count >= urls.count {
+            partialLoaded.remove(key)
+            return
+        }
+        // 距末尾 > 8 帧 → 不急着补（还有 ~330ms 缓冲，够后台解码追上）
+        if cached.count - currentIndex > 8 { return }
+        // 开始后台补齐下一批
+        backfilling.insert(key)
+        let maxPixel = maxPixelSize
+        let fromIdx = cached.count
+        let batch = Array(urls.suffix(from: fromIdx).prefix(backfillBatch))
+        Task.detached(priority: .userInitiated) { [weak self] in
+            let images = batch.compactMap { PetSkin.decodeDownscaled($0, maxPixel: maxPixel) }
+            await MainActor.run {
+                self?.appendFrames(action, variant: variant, images: images, key: key, totalUrls: urls.count)
+            }
+        }
+    }
+
+    /// 追加流式补齐的帧到缓存数组。
+    private func appendFrames(_ action: PetAction, variant: Int, images: [NSImage], key: String, totalUrls: Int) {
+        backfilling.remove(key)
+        guard !images.isEmpty else { return }
+        // 回窝节能模式：补齐也拒绝（动作已被 trim 淘汰）
+        if homeOnlyMode, action != .home, action != .fall { return }
+        guard var variants = cache[action], var frames = variants[safe: variant] else { return }
+        frames.append(contentsOf: images)
+        variants[variant] = frames
+        cache[action] = variants
+        // 检查是否已全部加载
+        if frames.count >= totalUrls {
+            partialLoaded.remove(key)
+            Logger.log("backfill \(action.rawValue)_\(variant) complete: \(frames.count) frames", category: .debug)
+        } else {
+            Logger.log("backfill \(action.rawValue)_\(variant): +\(images.count) → \(frames.count)/\(totalUrls)", category: .debug)
+        }
+    }
+
+    /// 回窝节能模式：清空所有活动动作的缓存（idle/walk/yawn/drag/happy/hurt/sleep），
+    /// 只保留 .home（在窝显示的 1 帧睡眠姿势）+ .fall（出窝掉落动画，用户点出窝时需即时播放）。
+    /// 同时清空预取集合与播放记录，避免 setAction(.idle) 触发的预取把刚卸载的动作填回来。
+    /// 内存收益：757MB → ~140MB（fall 105 帧 + home 1 帧），出窝零延迟。
+    /// 出窝落地后 setAction(.idle) 会重新预取活动动作（lifeState 已是 roaming）。
+    func trimToHomeOnly() {
+        let keep: Set<PetAction> = [.home, .fall]
+        cache = cache.filter { keep.contains($0.key) }
+        signatures = signatures.filter { keep.contains($0.key) }
+        loopPoints = loopPoints.filter { keep.contains($0.key) }
+        prefetched = []
+        played = []
+        partialLoaded = []
+        backfilling = []
+        // 置节能标志：正在后台解码的预取陆续完成时，storeLoaded/storePartialLoaded/appendFrames 会拒绝它们
+        homeOnlyMode = true
+        Logger.log("trimToHomeOnly — evicted activity actions, kept: \(cache.keys.map { $0.rawValue }.sorted())", category: .memory)
     }
 
     private func resolveVariant(_ action: PetAction, requested: Int) -> Int {
@@ -210,6 +397,13 @@ final class PetSkin {
     private func storeLoaded(_ action: PetAction, variant: Int, images: [NSImage], signatures: [[Float]], isPrefetch: Bool, key: String) {
         loading.remove(key)
         guard !images.isEmpty else { return }
+        // 回窝节能模式：拒绝非 [home, fall] 的任何加载（含播放加载）入缓存。
+        // 回窝前 roaming 时启动的后台预取，或 animTick 请求当前 action 帧触发的播放加载，
+        // 若放它们入缓存，trim 清空的内存会被重新填回（实测回窝后仍 470MB）。
+        if homeOnlyMode, action != .home, action != .fall {
+            Logger.log("storeLoaded \(action.rawValue)_\(variant) dropped — homeOnlyMode active", category: .memory)
+            return
+        }
         // 确保该动作的变体数组存在并足够长（cache 与 signatures 同步补齐，防止历史不同步越界）
         var variants = cache[action] ?? []
         var sigs = self.signatures[action] ?? []
@@ -229,11 +423,15 @@ final class PetSkin {
         loopPts[variant] = Self.computeLoopPoint(signatures)
 
         if isPrefetch {
-            // 预取：直接入缓存。淘汰"已播放（物化）过且非核心"的动作——
-            // 否则预取覆盖所有高频动作后，播放全命中缓存、播放加载永不触发，
-            // 淘汰机制失效，物化内存无限累积（实测 1.3GB）。
-            // 未播放的预取动作只是解码产物（便宜，855 帧约 +74MB），可常驻。
-            let keep = Self.coreActions.union(variantURLs.keys.filter { !played.contains($0) }).union([action])
+            // 预取淘汰：保留 coreActions + 当前预取集合 + 当前正在 storeLoaded 的动作。
+            // 关键修复：旧逻辑用 "!played" 判断保留集，导致播放过的 walk/yawn 等高频动作
+            // 被排除出 keep —— 同批次预取的其他动作 storeLoaded 时会把刚预取的 walk 挤掉
+            // （循环淘汰 bug），下次切换时重新解码 1.4-2s。
+            // 预取列表（prefetched）是 idle 后的候选动作，无论是否播放过都应保留。
+            // 内存：预取动作位图虽已物化（~1.3MB/帧），但配合"降低活动频率"（30s 档），
+            // AI 决策间隔远大于预取时间，切换时命中缓存零延迟；markPlayed 淘汰仍会释放
+            // 非当前播放的动作，控制峰值内存。
+            let keep = Self.coreActions.union(prefetched).union([action])
             cache = cache.filter { keep.contains($0.key) }
             cache[action] = variants
             self.signatures = self.signatures.filter { keep.contains($0.key) }
@@ -512,7 +710,10 @@ final class PetSkin {
         }
         // 降采样目标 = 最宽帧 × 用户缩放 × 皮肤缩放 × 视网膜 2x，限制在 320...640
         let targetPixel = Int(Double(max(widest, 1)) * Double(Defaults[.petScale]) * Double(scale) * 2.0)
-        let maxPixelSize = min(640, max(320, targetPixel))
+        // 上限 300px：宠物显示尺寸 90pt（视网膜 180px），300px 是 1.7 倍采样，清晰度足够。
+        // 每帧从 1.14MB(640px) → ~0.38MB(300px)，整体内存降 ~70%。
+        // 下限 256 保证极小缩放时仍可识别。
+        let maxPixelSize = min(300, max(256, targetPixel))
 
         let skin = PetSkin(
             variantURLs: variantURLs,
@@ -525,17 +726,26 @@ final class PetSkin {
             sourceURL: dir
         )
 
-        // 3. 启动即同步加载 idle 第一个变体（动画立刻可用），并后台预取高频动作
+        // 3. 启动即同步加载 idle 变体 0 的前几帧（动画立刻可用），后续帧流式补齐。
+        // 同步加载保证启动瞬间有帧显示（不闪占位），但只取 trailer 帧省内存
+        // （全量 170帧≈194MB → 前24帧≈9MB，剩余靠 backfill 在 idle 循环播放时补齐）。
+        // 其余 idle 变体（1/2/3）由下方 prefetch 异步加载 trailer 帧，实现待机变体轮换。
         if let idleVariants = variantURLs[.idle], let firstVariant = idleVariants.first {
-            let images = firstVariant.compactMap { decodeDownscaled($0, maxPixel: maxPixelSize) }
-            let sigs = firstVariant.map { frameSignature(from: $0) }
+            let allSigs = firstVariant.map { frameSignature(from: $0) }
+            let trailerCount = min(skin.trailerFrameCount, firstVariant.count)
+            let images = Array(firstVariant.prefix(trailerCount))
+                .compactMap { decodeDownscaled($0, maxPixel: maxPixelSize) }
             if !images.isEmpty {
                 skin.cache[.idle] = [images]
-                skin.signatures[.idle] = [sigs]
-                skin.loopPoints[.idle] = [computeLoopPoint(sigs)]
+                skin.signatures[.idle] = [allSigs]
+                skin.loopPoints[.idle] = [computeLoopPoint(allSigs)]
+                if images.count < firstVariant.count {
+                    skin.partialLoaded.insert("idle_0")
+                }
             }
         }
-        skin.prefetch([.walk, .yawn, .drag, .happy, .hurt, .fall])
+        // idle 加入预取：加载全部变体的 trailer 帧（变体轮换）；其他动作单变体
+        skin.prefetch([.idle, .walk, .yawn, .drag, .happy, .hurt, .fall])
 
         return skin
     }

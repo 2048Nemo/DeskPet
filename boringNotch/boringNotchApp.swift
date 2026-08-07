@@ -347,6 +347,23 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
+        // 拖宠物进入刘海展开区 → 打开刘海并切到 Pet 页（对应 handleDragEntersNotchRegion，
+        // 但目标视图是 .pet）。通知 object 可携带屏幕 UUID 用于多屏；省略时用主 vm。
+        NotificationCenter.default.addObserver(
+            forName: Notification.Name.openNotchToPet, object: nil, queue: .main
+        ) { [weak self] notification in
+            Task { @MainActor in
+                guard let self = self else { return }
+                if let uuid = notification.object as? String,
+                   Defaults[.showOnAllDisplays], let viewModel = self.viewModels[uuid] {
+                    viewModel.open()
+                } else {
+                    self.vm.open()
+                }
+                self.coordinator.currentView = .pet
+            }
+        }
+
         // Use closure-based observers for DistributedNotificationCenter and keep tokens for removal
         screenLockedObserver = DistributedNotificationCenter.default().addObserver(
             forName: NSNotification.Name(rawValue: "com.apple.screenIsLocked"),

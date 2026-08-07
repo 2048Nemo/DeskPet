@@ -96,6 +96,18 @@ final class PetWindowController {
         window?.setFrameOrigin(point)
     }
 
+    /// 临时把宠物窗口提到刘海窗口（level = .mainMenu + 3）之上。
+    /// 用途：拖宠物进入刘海展开区时，避免宠物被刘海窗口遮挡（拖拽全程可见自己在拖什么）。
+    /// 必须在拖拽结束/离开区域时配对调用 restoreLevel()。
+    func elevateLevel() {
+        window?.level = .mainMenu + 4
+    }
+
+    /// 恢复宠物窗口默认层级（与 elevateLevel 配对）。
+    func restoreLevel() {
+        window?.level = .floating
+    }
+
     /// 调整窗口内容尺寸（保持左下角 origin 不变 → 宠物视觉位置不动，面板向上展开）
     func setContentSize(_ size: NSSize) {
         guard let window else { return }

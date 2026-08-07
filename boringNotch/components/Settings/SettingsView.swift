@@ -1799,6 +1799,30 @@ func warningBadge(_ text: String, _ description: String) -> some View {
     }
 }
 
+/// 活动频率 Picker 的选项（用枚举驱动，避免 tag 动态值导致 Custom 无法选中）
+private enum RoamPreset: Hashable {
+    case hyper, normal, calm, chill, custom
+    var interval: Double? {
+        switch self {
+        case .hyper: return 5
+        case .normal: return 10
+        case .calm: return 15
+        case .chill: return 30
+        case .custom: return nil
+        }
+    }
+    /// 根据当前 petRoamInterval 值推断对应的预设档位
+    static func from(interval: Double) -> RoamPreset {
+        switch interval {
+        case 5: return .hyper
+        case 10: return .normal
+        case 15: return .calm
+        case 30: return .chill
+        default: return .custom
+        }
+    }
+}
+
 /// 桌面宠物设置
 struct PetSettings: View {
     @Default(.petEnabled) var petEnabled
@@ -1808,6 +1832,7 @@ struct PetSettings: View {
     @Default(.petMusicDance) var petMusicDance
     @Default(.petRoamInterval) var petRoamInterval
     @State private var skinStatusText = ""
+    @State private var roamSelection: RoamPreset = .normal
 
     var body: some View {
         Form {
@@ -1834,13 +1859,48 @@ struct PetSettings: View {
                     Text("Normal").tag(Double(1.0))
                     Text("Fast").tag(Double(2.0))
                 }
-                Picker("Roaming frequency", selection: $petRoamInterval) {
-                    Text("Calm").tag(Double(15))
-                    Text("Normal").tag(Double(10))
-                    Text("Hyper").tag(Double(5))
+                // 活动频率：预设档位 + 自定义。
+                // Picker 绑定独立的 roamSelection 枚举（避免 tag 动态值导致 Custom 选不中）。
+                // 选预设 → 直接写入 petRoamInterval；选 Custom → 展开滑块精确调节（3–60 秒）。
+                Picker("Activity frequency", selection: $roamSelection) {
+                    Text("Hyper · ~every 5s").tag(RoamPreset.hyper)
+                    Text("Normal · ~every 10s").tag(RoamPreset.normal)
+                    Text("Calm · ~every 15s").tag(RoamPreset.calm)
+                    Text("Chill · ~every 30s").tag(RoamPreset.chill)
+                    Text("Custom…").tag(RoamPreset.custom)
+                }
+                .onChange(of: roamSelection) { _, newValue in
+                    // 选了预设档位 → 写入对应秒数；选 Custom 不改值（保留当前自定义秒数）
+                    if let interval = newValue.interval {
+                        petRoamInterval = interval
+                    }
+                }
+                .onAppear {
+                    roamSelection = RoamPreset.from(interval: petRoamInterval)
+                }
+                if roamSelection == .custom {
+                    HStack {
+                        Text("\(Int(petRoamInterval))s")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .frame(width: 36, alignment: .leading)
+                        Slider(value: $petRoamInterval, in: 3...60, step: 1) {
+                            Text("Custom interval")
+                        } minimumValueLabel: {
+                            Text("3s")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        } maximumValueLabel: {
+                            Text("60s")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
                 }
             } header: {
                 Text("Behavior")
+            } footer: {
+                Text("Activity frequency controls how often the pet decides to walk, sleep, or do tricks while idle. Lower intervals = more active (more memory/CPU); higher intervals = calmer and smoother.")
             }
             Section {
                 TextField("Skin folder", text: $petSkinDirectory)

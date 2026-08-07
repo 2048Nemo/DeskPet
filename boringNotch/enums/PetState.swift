@@ -61,7 +61,7 @@ enum PetAction: String, CaseIterable, Identifiable {
     /// 是否循环播放
     var loopsByDefault: Bool {
         switch self {
-        case .eat, .happy, .hurt, .yawn: return false
+        case .eat, .fall, .happy, .hurt, .yawn: return false
         default: return true
         }
     }
