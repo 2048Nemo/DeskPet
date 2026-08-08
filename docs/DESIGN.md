@@ -2,8 +2,10 @@
 
 > 项目：boring.notch（macOS 刘海动态岛应用）
 > 功能：在原有 Notch 基础上实现「桌面养宠」（desktop pet）
-> 日期：2026-08-03
+> 日期：2026-08-03（初稿） / 2026-08-07（迭代修订）
 > 说明：本文档记录所有新增模块、对原项目的修改、关键技术决策与调试过程。
+> 注意：早期章节（§3-§7）描述的是初版实现；自 2026-08-07 起多次迭代后，缓存策略、掉落动画、
+> 交互入口等已有重大变更，**以 §9「迭代修订记录」为最新实现依据**。
 
 ---
 
@@ -226,3 +228,148 @@
 - 宠物与系统事件联动（充电时开心、下载完成时好奇张望）
 - 序列帧 → 直接支持 GIF/APNG 素材
 - 回窝后刘海内宠物小动画（非静态头像）
+
+---
+
+## 9. 迭代修订记录（2026-08-07 起，以本节为最新实现依据）
+
+### 9.1 待机变体轮换（idle 4 套动画循环播放）
+
+**问题**：`prefetch` 只加载每个动作的第一个变体（省内存），导致 `preferredVariant` 永远从「已缓存」中选 → 只返回变体 0 → 一直播同一套待机动画。
+
+**修复**（`SpriteAnimator.swift`）：
+- `prefetch` 对 `.idle` 特判：加载**全部变体**的 trailer 帧（4 变体 × 24 帧 ≈ 36MB，可接受）；
+- 其余动作仍只加载单变体（省内存，`preferredVariant` 优先已缓存保证零延迟）；
+- 启动时同步加载 idle 变体 0（立刻可显示），其余变体由 prefetch 异步补齐；
+- `setAction(.idle)` 的预取列表也加入 `.idle`，保证轮换素材常驻。
+
+**效果**：待机时 4 套动画随机轮换，不再单调。
+
+### 9.2 动作朝向（facing）机制
+
+**不分析素材内容**，约定所有素材默认朝右，运行时按目标方向镜像：
+- `updateFacing(toward:)`：`facingLeft = target.x < position.x`（目标在左→朝左）；
+- 渲染时 `scaleEffect(x: facingLeft ? -1 : 1)` 水平镜像（`PetContentView.swift`）；
+- 走路 / 回窝都会先调用 `updateFacing`。素材只需画一个方向，向左走自动翻转。
+
+### 9.3 掉落动画（fall）完善
+
+**问题演进**：
+1. 物理掉落（gravity=1600）~1 秒就落地，fall 动画 105 帧（4.4s）只播 1/4 被切断；
+2. `land()` 落地立即 `setAction(.idle)`，掉落动画后半段（落地→站立）永远播不出来；
+3. `loopsByDefault` 里 fall 未列入一次性动作 → **被当成循环动画**，出窝后一直播掉落。
+
+**修复**（`PetManager.swift` / `enums/PetState.swift`）：
+- `gravity` 1600 → 500（掉落 ~1.8s，动画能播到 ~40%）；
+- `land()` 落地只停止物理运动，**不切 idle**——fall 动画继续播完剩余帧（站立姿态），由 animTick 一次性动作播完逻辑自然衔接 idle；
+- `loopsByDefault` 的 false 列表加入 `.fall`（一次性动作，播完回 idle）；
+- 弹跳阈值 220→300、衰减 35%→25%（低重力下避免多次弹跳）。
+
+**最终效果**：出窝 = 掉落 → 物理落地 → 站立 → 自然衔接待机。
+
+### 9.4 出窝初始位置（用户多轮调试确认）
+
+`leaveHome()` 初始 y：`maxY - inset - size.height + 200`（**200pt 为最终确认值**）。
+宠物顶部超出屏幕顶 200pt，从屏幕顶端「探出」再掉落，有完整入画效果。
+真刘海屏仍下移 `inset` 避开物理遮挡。
+
+### 9.5 部分帧预缓存 + 流式补齐（内存优化核心）
+
+**背景**：全量预取 813 帧 ≈ 490MB（实测），内存过高。
+
+**方案**（`SpriteAnimator.swift`）：
+- **位图/签名分离**：预缓存时每动作只解码前 `trailerFrameCount`（24 帧 = 1 秒 @24fps）位图（贵，0.38MB/帧）；
+  全部帧签名（32px，2KB/帧）全量计算——保证 `loopPoint` 无缝循环正确；
+- **流式补齐** `backfillIfNeeded`：播放进度距缓存末尾 ≤8 帧时，后台解码下一批（24 帧）追加到缓存数组；
+  解码 7-10ms/帧 vs 播放 41.7ms/帧，解码比播放快 4-6 倍，永不卡顿；
+- **启动同步加载** idle 变体 0 的 trailer 帧（立刻可显示），剩余异步补齐；
+- 一次性动作播完判断改用 `totalFrameCount`（素材总帧数），不能用缓存帧数（否则 happy 没播完就回 idle）。
+
+### 9.6 降采样精度（640 → 300px）
+
+`maxPixelSize = min(300, max(256, targetPixel))`：
+- 宠物显示 90pt（视网膜 180px），300px 是 1.7 倍采样，清晰度足够；
+- 单帧 1.14MB → 0.38MB，整体内存降 ~70%。
+
+### 9.7 skip-unchanged-frame（CPU 优化）
+
+**问题**：24fps 动画 + 60fps tick，每 tick 都赋值 `currentFrame`（同一帧）→ 触发 60 次/秒 SwiftUI 重绘。
+
+**修复**（`PetManager.swift` animTick）：`if idx != lastFrameIndex` 才赋值 `currentFrame`。
+**效果**：CPU 8-12% → ~0%（实测）。
+
+### 9.8 回窝节能（trimToHomeOnly）
+
+**问题**：回窝后活动动作帧仍常驻，且 trim 后迟到的后台预取把帧填回（实测回窝后仍 500MB）。
+
+**修复**：
+- `trimToHomeOnly()`：回窝（fadeout 完成 → atHome）时清空所有活动动作缓存，只保留 `.home` + `.fall`（出窝动画），内存 → ~120MB；
+- **homeOnlyMode 标志**：storeLoaded/storePartialLoaded/appendFrames 都检查，回窝期间拒绝非 [home, fall] 入缓存（含播放加载）；
+- fadeout 完成后 `setAction(.home)` 而非 `.idle`（否则 animTick 每帧请求 idle 帧触发播放加载绕过拦截）；
+- `setAction(.idle)` 预取加 `lifeState == .roaming` 守卫（atHome 不预取）。
+
+### 9.9 循环淘汰 bug 修复（walk 切换延迟根因）
+
+**问题**：`storeLoaded` 预取淘汰用 `!played` 判断 keep 集，播放过的 walk/yawn 被排除 → 同批次预取互相挤掉 → 下次切换重新解码（1.4-2s 延迟，窗口已动动画未开始）。
+
+**修复**：新增 `prefetched` 集合记录当前预取列表，淘汰时 `keep = coreActions ∪ prefetched ∪ [action]`——预取列表内的动作无论是否播放过都保留。
+
+### 9.10 拖拽投放刘海（拖宠物到刘海 → 打开 Pet 页）
+
+**交互**（用户确认）：
+- 触发区 = 刘海展开区（`openNotchSize` 640×190，屏幕顶部居中）；
+- 拖拽悬停进入区域 → 刘海立即展开到 **Pet 页**（与拖文件到刘海打开 Shelf 同语义）；
+- 松手在区域 → 瞬间进窝（`snapHome`，无走回动画，直接定位+淡出）。
+
+**实现**：
+- `PetManager.evaluateNotchDropHover(at:)`：DragGesture.onChanged 每帧调用，命中区域（首次）发 `.openNotchToPet` 通知 + `elevateLevel()`（宠物窗口提到 `.mainMenu+4`，盖在刘海 `.mainMenu+3` 之上，拖拽全程可见）；
+- `AppDelegate` 监听通知 → `vm.open()` + `coordinator.currentView = .pet`；
+- 松手 `exitNotchDropHover()` → `snapHome()` + `restoreLevel()`；
+- ContentView 4 处关闭逻辑加 `!petManager.isHoveringNotchDropZone` 抑制——拖拽悬停期间刘海不被自动关闭（宠物遮挡 hover 也不怕）；
+- 窗口层级：`PetWindowController.elevateLevel()/restoreLevel()`。
+
+### 9.11 音效音量滑块（Pet 页内）
+
+- 新增 `Defaults[.petSoundVolume]`（0-1，默认 0.7），独立于系统音量；
+- `playSound` 用设置值替代硬编码 0.7；`updateSoundVolume()` 拖动时实时生效；
+- PetNotchView 右侧面板底部加 🔊 滑块（step 0.05，百分比显示）。
+
+### 9.12 活动频率自定义
+
+- 预设档：Hyper(5s) / Normal(10s) / Calm(15s) / Chill(30s)；
+- **Custom…**：枚举 `RoamPreset` 驱动 Picker（修复动态 tag 选不中的 bug），选 Custom 展开滑块 3-60s 精确调节；
+- footer 说明：频率越低越省内存/CPU，越高越活泼。
+
+### 9.13 音效重复播放 bug 修复（早期）
+
+- idle 变体切换（forceReshuffle）不重播音效；
+- idle/home 循环动作静音（素材带背景音乐，循环重播会一直响）；
+- 切到无声动作时总是先 `stopSound()`；
+- `playSound` 异步创建 NSSound（首载阻塞主线程 ~0.4s）。
+
+### 9.14 音乐联动冻结 bug（宠物不走动根因）
+
+**问题**：`petMusicDance`（默认开）+ 系统任意播放（如 Edge 直播）→ 宠物切 `.music` 动作；无 music 素材时兜底显示 idle 帧，但 `action == .music ≠ .idle` → 行为 AI 永不决策 → **宠物永久站桩**。
+
+**修复**：`PetSkin.hasRealMaterial(.music)`（区分真实素材与兜底），无跳舞素材时不进入 music 动作。加状态日志（`[Pet]` 每 5s）便于诊断。
+
+### 9.15 Pet 页布局
+
+- 与 Home/Shelf 同布局：`HStack(alignment: .top, spacing: 15)`，左侧 90×90 宠物卡片 + 右侧 215 信息面板；
+- **不加** `frame(maxWidth/maxHeight: .infinity)`（曾导致贴左上角）——父容器 VStack 自然水平居中、内容靠上；
+- 打开态容器 `mainLayout.frame(height: notchSize.height)` 固定高度（ContentView.swift:122）。
+
+---
+
+## 10. 当前性能指标（2026-08-07 实测）
+
+| 指标 | 优化前 | 优化后 |
+|------|--------|--------|
+| 内存（roaming 稳定） | ~484MB | **~190MB** |
+| 内存（启动） | ~339MB | **~150MB** |
+| 内存（回窝 atHome） | ~470MB | **~120MB** |
+| CPU | 8-12% | **~0%** |
+| 单帧位图 | 1.14MB (640px) | **0.38MB (300px)** |
+
+关键组合：300px 降采样 + 24 帧/动作部分预缓存 + 流式补齐 + skip-unchanged-frame + 回窝 trim。
+
