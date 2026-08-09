@@ -79,7 +79,7 @@
 > 本项目没有 Apple 开发者签名，首次打开会被 macOS 拦截。请在终端运行以下命令解除隔离（只需一次）：
 >
 > ```bash
-> xattr -dr com.apple.quarantine /Applications/boringNotch.app
+> xattr -dr com.apple.quarantine /Applications/deskpet.app
 > ```
 
 ---
@@ -113,14 +113,14 @@
 ```bash
 git clone https://github.com/2048Nemo/DeskPet.git
 cd DeskPet
-open boringNotch.xcodeproj
+open deskpet.xcodeproj
 ```
 
 在 Xcode 中按 `Cmd + R` 构建运行。
 
 > 也可以用命令行构建：
 > ```bash
-> xcodebuild -project boringNotch.xcodeproj -scheme boringNotch \
+> xcodebuild -project deskpet.xcodeproj -scheme deskpet \
 >   -configuration Release -destination 'generic/platform=macOS' \
 >   CODE_SIGNING_ALLOWED=NO build
 > ```
