@@ -88,7 +88,7 @@
 		14C08BB62C8DE42D000F8AA0 /* CalendarManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14C08BB52C8DE42D000F8AA0 /* CalendarManager.swift */; };
 		14C08BB92C8DE4B1000F8AA0 /* BoringCalendar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14C08BB82C8DE4B1000F8AA0 /* BoringCalendar.swift */; };
 		14C08BC12C8E03AD000F8AA0 /* NSImage+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14C08BC02C8E03AD000F8AA0 /* NSImage+Extensions.swift */; };
-		14CEF4162C5CAED300855D72 /* boringNotchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14CEF4152C5CAED300855D72 /* boringNotchApp.swift */; };
+		14CEF4162C5CAED300855D72 /* deskpetApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14CEF4152C5CAED300855D72 /* deskpetApp.swift */; };
 		14CEF4182C5CAED300855D72 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14CEF4172C5CAED300855D72 /* ContentView.swift */; };
 		14CEF41A2C5CAED400855D72 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 14CEF4192C5CAED400855D72 /* Assets.xcassets */; };
 		14CEF41D2C5CAED400855D72 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 14CEF41C2C5CAED400855D72 /* Preview Assets.xcassets */; };
@@ -266,12 +266,12 @@
 		14C08BB52C8DE42D000F8AA0 /* CalendarManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarManager.swift; sourceTree = "<group>"; };
 		14C08BB82C8DE4B1000F8AA0 /* BoringCalendar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoringCalendar.swift; sourceTree = "<group>"; };
 		14C08BC02C8E03AD000F8AA0 /* NSImage+Extensions.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "NSImage+Extensions.swift"; sourceTree = "<group>"; };
-		14CEF4122C5CAED300855D72 /* boringNotch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = boringNotch.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		14CEF4152C5CAED300855D72 /* boringNotchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = boringNotchApp.swift; sourceTree = "<group>"; };
+		14CEF4122C5CAED300855D72 /* deskpet.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = deskpet.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		14CEF4152C5CAED300855D72 /* deskpetApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = deskpetApp.swift; sourceTree = "<group>"; };
 		14CEF4172C5CAED300855D72 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		14CEF4192C5CAED400855D72 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		14CEF41C2C5CAED400855D72 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
-		14CEF41E2C5CAED400855D72 /* boringNotch.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = boringNotch.entitlements; sourceTree = "<group>"; };
+		14CEF41E2C5CAED400855D72 /* deskpet.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = deskpet.entitlements; sourceTree = "<group>"; };
 		14D031ED2C689DB70096E6A1 /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOKit.framework; path = System/Library/Frameworks/IOKit.framework; sourceTree = SDKROOT; };
 		14D031EF2C689DC00096E6A1 /* ApplicationServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ApplicationServices.framework; path = System/Library/Frameworks/ApplicationServices.framework; sourceTree = SDKROOT; };
 		14D570B82C5E98A20011E668 /* drop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = drop.swift; sourceTree = "<group>"; };
@@ -587,7 +587,7 @@
 			isa = PBXGroup;
 			children = (
 				112B0EB62E30DD0F00562D6C /* mediaremote-adapter */,
-				14CEF4142C5CAED300855D72 /* boringNotch */,
+				14CEF4142C5CAED300855D72 /* deskpet */,
 				11F748502EC9AABA00F841DB /* BoringNotchXPCHelper */,
 				14CEF4132C5CAED300855D72 /* Products */,
 				14D031EC2C689DB70096E6A1 /* Frameworks */,
@@ -597,13 +597,13 @@
 		14CEF4132C5CAED300855D72 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				14CEF4122C5CAED300855D72 /* boringNotch.app */,
+				14CEF4122C5CAED300855D72 /* deskpet.app */,
 				11F7484F2EC9AABA00F841DB /* BoringNotchXPCHelper.xpc */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		14CEF4142C5CAED300855D72 /* boringNotch */ = {
+		14CEF4142C5CAED300855D72 /* deskpet */ = {
 			isa = PBXGroup;
 			children = (
 				11F748672EC9AC9600F841DB /* XPCHelperClient */,
@@ -619,20 +619,20 @@
 				1153BD8E2D986B1F00979FB0 /* MediaControllers */,
 				B15063502C63D3F600EBB0E3 /* extensions */,
 				1471639B2C5D362F0068B555 /* components */,
-				14CEF4152C5CAED300855D72 /* boringNotchApp.swift */,
+				14CEF4152C5CAED300855D72 /* deskpetApp.swift */,
 				14CEF4172C5CAED300855D72 /* ContentView.swift */,
 				B17266E02C6532560031BA0D /* Localizable.xcstrings */,
 				14CEF4192C5CAED400855D72 /* Assets.xcassets */,
 				14A7E5962C65FD31008C1BE9 /* boring.m4a */,
 				1443E7F42C609E650027C1FC /* Info.plist */,
-				14CEF41E2C5CAED400855D72 /* boringNotch.entitlements */,
+				14CEF41E2C5CAED400855D72 /* deskpet.entitlements */,
 				14CEF41B2C5CAED400855D72 /* Preview Content */,
 				112FB72F2CCF12CC0015238C /* private */,
 				11CC44A12CEE614100C7244B /* BoringViewCoordinator.swift */,
 				C5C37CD20E43B0BC31232D69 /* utils */,
 				5B5A9DF9DE38C5A1C7671DA0 /* menu */,
 			);
-			path = boringNotch;
+			path = deskpet;
 			sourceTree = "<group>";
 		};
 		14CEF41B2C5CAED400855D72 /* Preview Content */ = {
@@ -858,9 +858,9 @@
 			productReference = 11F7484F2EC9AABA00F841DB /* BoringNotchXPCHelper.xpc */;
 			productType = "com.apple.product-type.xpc-service";
 		};
-		14CEF4112C5CAED300855D72 /* boringNotch */ = {
+		14CEF4112C5CAED300855D72 /* deskpet */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 14CEF4212C5CAED400855D72 /* Build configuration list for PBXNativeTarget "boringNotch" */;
+			buildConfigurationList = 14CEF4212C5CAED400855D72 /* Build configuration list for PBXNativeTarget "deskpet" */;
 			buildPhases = (
 				14CEF40E2C5CAED300855D72 /* Sources */,
 				14CEF40F2C5CAED300855D72 /* Frameworks */,
@@ -876,7 +876,7 @@
 			fileSystemSynchronizedGroups = (
 				112FB72F2CCF12CC0015238C /* private */,
 			);
-			name = boringNotch;
+			name = deskpet;
 			packageProductDependencies = (
 				14D032192C68F32E0096E6A1 /* LaunchAtLogin */,
 				14D0321C2C68F3350096E6A1 /* Sparkle */,
@@ -892,7 +892,7 @@
 				111BEA6E2ED166E20079DD4E /* MacroVisionKit */,
 			);
 			productName = dynamicNotch;
-			productReference = 14CEF4122C5CAED300855D72 /* boringNotch.app */;
+			productReference = 14CEF4122C5CAED300855D72 /* deskpet.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -914,7 +914,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 14CEF40D2C5CAED200855D72 /* Build configuration list for PBXProject "boringNotch" */;
+			buildConfigurationList = 14CEF40D2C5CAED200855D72 /* Build configuration list for PBXProject "deskpet" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -940,7 +940,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				14CEF4112C5CAED300855D72 /* boringNotch */,
+				14CEF4112C5CAED300855D72 /* deskpet */,
 				11F7484E2EC9AABA00F841DB /* BoringNotchXPCHelper */,
 			);
 		};
@@ -1066,7 +1066,7 @@
 				1132E5142E777B920068732D /* YouTubeMusicNetworking.swift in Sources */,
 				1132E5122E777B6E0068732D /* YouTubeMusicModels.swift in Sources */,
 				11CFC65F2E097F2F00748C80 /* OnboardingView.swift in Sources */,
-				14CEF4162C5CAED300855D72 /* boringNotchApp.swift in Sources */,
+				14CEF4162C5CAED300855D72 /* deskpetApp.swift in Sources */,
 				B17266DF2C64DFA00031BA0D /* BundleInfos.swift in Sources */,
 				118EBE3B2E9720C500D54B5A /* ShelfStateViewModel.swift in Sources */,
 				11F747CE2EC75CEA00F841DB /* DragPreviewView.swift in Sources */,
@@ -1302,14 +1302,14 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION = YES;
-				CODE_SIGN_ENTITLEMENTS = boringNotch/boringNotch.entitlements;
+				CODE_SIGN_ENTITLEMENTS = deskpet/deskpet.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 271;
 				DEAD_CODE_STRIPPING = YES;
-				DEVELOPMENT_ASSET_PATHS = "\"boringNotch/Preview Content\"";
+				DEVELOPMENT_ASSET_PATHS = "\"deskpet/Preview Content\"";
 				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
@@ -1319,8 +1319,8 @@
 					"$(PROJECT_DIR)/mediaremote-adapter",
 				);
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = boringNotch/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = TheBoringNotch;
+				INFOPLIST_FILE = deskpet/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = DeskPet;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_LSBackgroundOnly = NO;
 				INFOPLIST_KEY_LSUIElement = YES;
@@ -1335,7 +1335,7 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 2.7.3;
-				PRODUCT_BUNDLE_IDENTIFIER = theboringteam.boringnotch;
+				PRODUCT_BUNDLE_IDENTIFIER = com.deskpet.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -1356,14 +1356,14 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION = YES;
-				CODE_SIGN_ENTITLEMENTS = boringNotch/boringNotch.entitlements;
+				CODE_SIGN_ENTITLEMENTS = deskpet/deskpet.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 271;
 				DEAD_CODE_STRIPPING = YES;
-				DEVELOPMENT_ASSET_PATHS = "\"boringNotch/Preview Content\"";
+				DEVELOPMENT_ASSET_PATHS = "\"deskpet/Preview Content\"";
 				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
@@ -1372,8 +1372,8 @@
 					"$(PROJECT_DIR)/mediaremote-adapter",
 				);
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = boringNotch/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = TheBoringNotch;
+				INFOPLIST_FILE = deskpet/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = DeskPet;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_LSBackgroundOnly = NO;
 				INFOPLIST_KEY_LSUIElement = YES;
@@ -1388,7 +1388,7 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 2.7.3;
-				PRODUCT_BUNDLE_IDENTIFIER = theboringteam.boringnotch;
+				PRODUCT_BUNDLE_IDENTIFIER = com.deskpet.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -1413,7 +1413,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		14CEF40D2C5CAED200855D72 /* Build configuration list for PBXProject "boringNotch" */ = {
+		14CEF40D2C5CAED200855D72 /* Build configuration list for PBXProject "deskpet" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				14CEF41F2C5CAED400855D72 /* Debug */,
@@ -1422,7 +1422,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		14CEF4212C5CAED400855D72 /* Build configuration list for PBXNativeTarget "boringNotch" */ = {
+		14CEF4212C5CAED400855D72 /* Build configuration list for PBXNativeTarget "deskpet" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				14CEF4222C5CAED400855D72 /* Debug */,
