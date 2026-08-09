@@ -19,7 +19,7 @@ permissions:
 
 jobs:
   build:
-    name: Build Boring Notch
+    name: Build DeskPet
     strategy:
       matrix:
         platform:
