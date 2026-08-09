@@ -1,191 +1,175 @@
 <h1 align="center">
   <br>
-  <a href="http://theboring.name"><img src="https://framerusercontent.com/images/RFK4vs0kn8pRMuOO58JeyoemXA.png?scale-down-to=256" alt="Boring Notch" width="150"></a>
+  <!-- 图标：请替换为 DeskPet 项目图标 -->
+  <img src=".github/assets/icon.png" alt="DeskPet" width="150">
   <br>
-  Boring Notch
+  DeskPet
   <br>
 </h1>
 
-
 <p align="center">
-  <a title="Crowdin" target="_blank" href="https://crowdin.com/project/boring-notch"><img src="https://badges.crowdin.net/boring-notch/localized.svg"></a>
-  <img src="https://github.com/TheBoredTeam/boring.notch/actions/workflows/cicd.yml/badge.svg" alt="TheBoringNotch Build & Test" style="margin-right: 10px;" />
-  <a href="https://discord.gg/c8JXA7qrPm">
-    <img src="https://dcbadge.limes.pink/api/server/https://discord.gg/c8JXA7qrPm?style=flat" alt="Discord Badge" />
+  <img src="https://github.com/2048Nemo/DeskPet/actions/workflows/cicd.yml/badge.svg" alt="Build Status" />
+  <a href="https://github.com/2048Nemo/DeskPet/releases">
+    <img alt="GitHub Release" src="https://img.shields.io/github/v/release/2048Nemo/DeskPet?display_name=tag&label=Release">
   </a>
-  <a href="https://www.ko-fi.com/alexander5015">
-    <img src="https://srv-cdn.himpfen.io/badges/kofi/kofi-flat.svg" alt="Ko-Fi" />
-  </a>
+  <img alt="Platform" src="https://img.shields.io/badge/platform-macOS%2014%2B-blue">
+  <img alt="License" src="https://img.shields.io/github/license/2048Nemo/DeskPet?label=License">
 </p>
 
-<!--Welcome to **Boring.Notch**, the coolest way to make your MacBook's notch the star of the show! Forget about those boring status bars—our notch turns into a dynamic music control center, complete with a snazzy visualizer and all the music controls you need. It's like having a mini concert right at the top of your screen! -->
-
-Say hello to **Boring Notch**, the coolest way to make your MacBook’s notch the star of the show! Say goodbye to boring status bars: with Boring Notch, your notch transforms into a dynamic music control center, complete with a vibrant visualizer and all the essential music controls you need. But that’s just the start! Boring Notch also offers calendar integration, a handy file shelf with AirDrop support, a complete MacOS HUD replacement and more!
-
+<!-- 预览图：请替换为 DeskPet 的 GIF/截图 -->
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/2d5f69c1-6e7b-4bc2-a6f1-bb9e27cf88a8" alt="Demo GIF" />
+  <img src=".github/assets/preview.gif" alt="DeskPet Demo" />
 </p>
 
-<!--https://github.com/user-attachments/assets/19b87973-4b3a-4853-b532-7e82d1d6b040-->
----
-<!--## Table of Contents
-- [Installation](#installation)
-- [Usage](#usage)
-- [Roadmap](#-roadmap)
-- [Building from Source](#building-from-source)
-- [Contributing](#-contributing)
-- [Join our Discord Server](#join-our-discord-server)
-- [Star History](#star-history)
-- [Buy us a coffee!](#buy-us-a-coffee)
-- [Acknowledgments](#-acknowledgments)-->
-
-## Installation
-
-**System Requirements:**
-- macOS **14 Sonoma** or later
-- Apple Silicon or Intel Mac
-
 ---
 
-### Option 1: Download and Install Manually
+**DeskPet** 是一款 macOS 桌面宠物应用，让你的菜单栏刘海变成一只活蹦乱跳的小猫咪 🐱。
 
-<a href="https://github.com/TheBoredTeam/boring.notch/releases/latest/download/boringNotch.dmg" target="_self"><img width="200" src="https://github.com/user-attachments/assets/e3179be1-8416-4b8a-b417-743e1ecc67d6" alt="Download for macOS" /></a>
+它基于 [boring.notch](https://github.com/TheBoredTeam/boring.notch) 构建，在保留原版刘海动态岛功能（音乐控制、日历、文件暂存、HUD 替换）的基础上，新增了完整的**桌面宠物系统**：
 
-Once downloaded, open the `.dmg` and move **Boring Notch** to your `/Applications` folder.
+- 🐾 **序列帧动画引擎** — 支持 24fps 高帧率动画，部分帧预缓存 + 流式补齐，内存占用极低（~200MB）
+- 🏠 **回窝/出窝** — 宠物可以回刘海里睡觉，拖到刘海区域松手即瞬间进窝
+- 🚶 **行为 AI** — 自主走动、打哈欠、睡觉、开心蹦跳，活动频率可自定义
+- 🎵 **音乐联动** — 播放音乐时宠物会跳舞（需提供跳舞素材）
+- 🖱️ **丰富交互** — 单击戳一戳、双击回窝/出窝、拖拽拎起走动、拖到刘海自动打开宠物面板
+- 🎨 **可换肤** — 任意序列帧素材即可作为皮肤（支持 seeDance 等 AI 视频抽帧）
+- ⚙️ **可调节** — 活动频率（Chill/Normal/Hyper + 自定义）、宠物大小、音效音量
 
-> [!IMPORTANT]
-> We don't have an Apple Developer account (yet 👀), so macOS will warn you that Boring Notch is from an unidentified developer on first launch. This is expected behavior.
->
-> You'll need to bypass this before the app will open. You only need to do this once. Use one of the methods below.
+## 📋 功能一览
 
----
+### 桌面宠物（本项目新增）
 
-#### Recommended: Terminal (Always Works)
+| 功能 | 说明 |
+|------|------|
+| 序列帧动画 | PNG 序列帧，24fps，部分帧缓存 + 流式解码 |
+| 行为状态机 | idle / walk / sleep / yawn / happy / hurt / drag / fall |
+| 待机变体轮换 | 多套待机动画随机切换，不单调 |
+| 拖拽投放刘海 | 拖宠物到刘海区域 → 自动打开宠物面板，松手瞬间进窝 |
+| 回窝节能 | 回窝后卸载所有活动动画帧，内存降至 ~120MB |
+| 音效系统 | 每个动作可配独立音效，音量独立可调 |
 
-This is the quickest and easiest method. It only requires a single command and works consistently for all users. System Settings can sometimes fail and won't work for non-admin users.
+### 原版刘海功能（继承自 boring.notch）
 
-After moving Boring Notch to your Applications folder, run:
-
-```bash
-xattr -dr com.apple.quarantine /Applications/boringNotch.app
-```
-
-Then open the app normally.
+- 🎧 音乐播放控制 + 实时可视化
+- 📆 日历 / 提醒事项集成
+- 📚 文件暂存架（支持 AirDrop）
+- 🎚️ 系统 HUD 替换（音量 / 亮度 / 键盘背光）
+- 🔋 充电指示器
+- 📷 镜子（摄像头预览）
 
 ---
 
-#### Alternative: System Settings
+## 安装
 
-> [!NOTE]
-> This method doesn't work for all users. If this doesn't work, use the Terminal method above.
+### 系统要求
 
-1. Try to open the app — you'll see a security warning.
-2. Click **OK** to dismiss it.
-3. Open **System Settings** > **Privacy & Security**.
-4. Scroll to the bottom and click **Open Anyway** next to the Boring Notch warning.
-5. Confirm if prompted.
+- macOS **14 Sonoma** 或更高
+- Apple Silicon 或 Intel Mac
 
----
+### 下载安装
 
-### Option 2: Install via Homebrew
-
-You can also install using [Homebrew](https://brew.sh). The Homebrew installation automatically bypasses the macOS security warning described above.
-
-```bash
-brew install --cask TheBoredTeam/boring-notch/boring-notch
-```
-
-## Usage
-
-- Launch the app, and voilà—your notch is now the coolest part of your screen.
-- Hover over the notch to see it expand and reveal all its secrets.
-- Use the controls to manage your music like a rockstar.
-- Click the star in your menu bar to customize your notch to your heart's content.
-
-## 📋 Roadmap
-- [x] Playback live activity 🎧
-- [x] Calendar integration 📆
-- [x] Reminders integration ☑️
-- [x] Mirror 📷
-- [x] Charging indicator and current percentage 🔋
-- [x] Customizable gesture control 👆🏻
-- [x] Shelf functionality with AirDrop 📚
-- [x] Notch sizing customization, finetuning on different display sizes 🖥️
-- [x] System HUD replacements (volume, brightness, backlight) 🎚️💡⌨️
-- [ ] Bluetooth Live Activity (connect/disconnect for bluetooth devices) 
-- [ ] Weather integration ⛅️
-- [ ] Customizable Layout options 🛠️
-- [ ] Lock Screen Widgets 🔒
-- [ ] Extension system 🧩
-- [ ] Notifications (under consideration) 🔔
-<!-- - [ ] Clipboard history manager 📌 `Extension` -->
-<!-- - [ ] Download indicator of different browsers (Safari, Chromium browsers, Firefox) 🌍 `Extension`-->
-<!-- - [ ] Customizable function buttons 🎛️ -->
-<!-- - [ ] App switcher 🪄 -->
-
-<!-- ## 🧩 Extensions
-> [!NOTE]
-> We’re hard at work on some awesome extensions! Stay tuned, and we’ll keep you updated as soon as they’re released. -->
-
-## Building from Source
-
-### Prerequisites
-
-- **macOS 15.6 or later**
-- **Xcode 26 or later**
-
-### Installation
-
-1. **Clone the Repository**:
-   ```bash
-   git clone https://github.com/TheBoredTeam/boring.notch.git
-   cd boring.notch
-   ```
-
-2. **Open the Project in Xcode**:
-   ```bash
-   open boringNotch.xcodeproj
-   ```
-
-3. **Build and Run**:
-    - Click the "Run" button or press `Cmd + R`. Watch the magic unfold!
-
-## 🤝 Contributing
-
-We’re all about good vibes and awesome contributions! Read [CONTRIBUTING.md](CONTRIBUTING.md) to learn how you can join the fun!
-
-## Join our Discord Server
-
-<a href="https://discord.gg/GvYcYpAKTu" target="_blank"><img src="https://iili.io/28m3GHv.png" alt="Join The Boring Server!" style="height: 60px !important;width: 217px !important;" ></a>
-
-## Star History
-
-<a href="https://www.star-history.com/#TheBoredTeam/boring.notch&Timeline">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=TheBoredTeam/boring.notch&type=Timeline&theme=dark" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=TheBoredTeam/boring.notch&type=Timeline" />
-   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=TheBoredTeam/boring.notch&type=Timeline" />
- </picture>
+<a href="https://github.com/2048Nemo/DeskPet/releases/latest">
+  <img width="200" src="https://github.com/user-attachments/assets/e3179be1-8416-4b8a-b417-743e1ecc67d6" alt="Download for macOS" />
 </a>
 
-## Support us on Ko-fi!
-<!-- <a href="https://www.buymeacoffee.com/jfxh67wvfxq" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-red.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a> -->
-<a href="https://www.ko-fi.com/alexander5015" target="_blank"><img src="https://github.com/user-attachments/assets//a76175ef-7e93-475a-8b67-4922ba5964c2" alt="Support us on Ko-fi" style="height: 70px !important;width: 346px !important;" ></a>
+1. 从 [Releases](https://github.com/2048Nemo/DeskPet/releases/latest) 下载 `.dmg` 文件
+2. 打开 `.dmg`，将 **DeskPet** 拖到 `/Applications` 文件夹
 
-## 🎉 Acknowledgments
+> [!IMPORTANT]
+> 本项目没有 Apple 开发者签名，首次打开会被 macOS 拦截。请在终端运行以下命令解除隔离（只需一次）：
+>
+> ```bash
+> xattr -dr com.apple.quarantine /Applications/boringNotch.app
+> ```
 
-We would like to express our gratitude to the authors and maintainers of the open-source projects that made this possible. 
+---
 
-## Notable Projects
-- **[MediaRemoteAdapter](https://github.com/ungive/mediaremote-adapter)** –  An open-source project that allowed us to use the Now Playing source in macOS 15.4+
-- **[NotchDrop](https://github.com/Lakr233/NotchDrop)** – An open-source project that has been instrumental in developing the first version of the "Shelf" feature in Boring Notch.
+## 使用
 
-For a full list of licenses and attributions, please see the [Third-Party Licenses](./THIRD_PARTY_LICENSES.md) file.
+### 桌面宠物
 
-### Icon credits: [@maxtron95](https://github.com/maxtron95)
-### Website credits: [@himanshhhhuv](https://github.com/himanshhhhuv)
+- **单击宠物**：戳一戳（心情好会开心蹦跳，心情差会委屈）
+- **双击宠物**：回窝睡觉 / 出窝活动
+- **拖拽宠物**：拎起来走动；拖到刘海区域松手 → 瞬间进窝 + 打开宠物面板
+- **宠物面板**（刘海展开后 Pet 标签页）：查看心情/清洁度、抚摸、召回/出窝、调节音效音量
 
-- **SwiftUI**: For making us look like coding wizards.
-- **You**: For being awesome and checking out **boring.notch**!
+### 刘海动态岛
 
+- 鼠标悬停刘海 → 展开查看音乐/日历/文件架
+- 点击菜单栏图标 → 打开设置
+- 拖文件到刘海 → 自动打开文件架
 
+---
+
+## 从源码构建
+
+### 前置要求
+
+- **macOS 15.6+**
+- **Xcode 26+**
+
+### 步骤
+
+```bash
+git clone https://github.com/2048Nemo/DeskPet.git
+cd DeskPet
+open boringNotch.xcodeproj
+```
+
+在 Xcode 中按 `Cmd + R` 构建运行。
+
+> 也可以用命令行构建：
+> ```bash
+> xcodebuild -project boringNotch.xcodeproj -scheme boringNotch \
+>   -configuration Release -destination 'generic/platform=macOS' \
+>   CODE_SIGNING_ALLOWED=NO build
+> ```
+
+---
+
+## 桌面宠物素材
+
+宠物素材放在 `~/Pictures/BoringPet/` 目录下，每个动作是一个子文件夹（编号 PNG 序列帧）。
+
+详见 **[PET.md](PET.md)** 和 **[docs/DESIGN.md](docs/DESIGN.md)**。
+
+支持用 seeDance 等 AI 工具生成视频后抽帧作为皮肤。
+
+---
+
+## 🛣️ Roadmap
+
+### 桌面宠物
+- [x] 序列帧动画引擎 + 行为 AI
+- [x] 回窝/出窝 + 拖拽投放刘海
+- [x] 部分帧预缓存 + 流式补齐（低内存）
+- [x] 多套待机变体轮换
+- [x] 活动频率 / 音效音量自定义
+- [ ] 更多行为（吃东西、玩耍、互动小游戏）
+- [ ] 皮肤市场 / 社区分享
+- [ ] 多宠物同时饲养
+
+### 继承自原版
+- [x] 音乐控制 + 可视化
+- [x] 日历 / 提醒 / 文件架 / HUD 替换
+- [ ] 蓝牙设备活动
+- [ ] 天气集成
+
+---
+
+## 🤝 致谢
+
+本项目基于开源项目 **[boring.notch](https://github.com/TheBoredTeam/boring.notch)** 构建，感谢原项目作者 [TheBoredTeam](https://github.com/TheBoredTeam) 的杰出工作。
+
+### 依赖的开源项目
+- **[boring.notch](https://github.com/TheBoredTeam/boring.notch)** — 刘海动态岛核心（GPLv3）
+- **[MediaRemoteAdapter](https://github.com/ungive/mediaremote-adapter)** — macOS 15.4+ 媒体控制
+- **[NotchDrop](https://github.com/Lakr233/NotchDrop)** — 文件架功能参考
+
+本项目继承 GPLv3 协议开源。
+
+---
+
+<p align="center">
+  Made with 🫶🏻 for cat lovers
+</p>
