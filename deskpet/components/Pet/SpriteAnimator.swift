@@ -320,14 +320,12 @@ final class PetSkin {
             for vi in 0..<(variantURLs[a]?.count ?? 0) {
                 partialLoaded.insert("\(a.rawValue)_\(vi)")
             }
-        }
-        // 清理被淘汰动作的孤儿数据（signatures 不截断——签名全量保留，loopPoint 仍可用）
-        let evicted = Set(cache.keys).subtracting(keep)
-        for a in evicted {
+            // 清理该动作的 backfilling 标记（截断后正在进行的补齐应作废）
             let prefix = "\(a.rawValue)_"
-            partialLoaded = partialLoaded.filter { !$0.hasPrefix(prefix) }
             backfilling = backfilling.filter { !$0.hasPrefix(prefix) }
         }
+        // 注意：截断模式下不从 cache 删除 key，因此不需要清理 evicted 孤儿。
+        // loopPoints/signatures 保持原样（签名全量，loopPoint 仍可用于补齐后的循环）。
     }
 
     // MARK: - 流式补齐
