@@ -23,7 +23,7 @@
 
 ---
 
-**DeskPet** 是一款 macOS 桌面宠物应用，让你的菜单栏刘海变成一只活蹦乱跳的小猫咪 🐱。
+**DeskPet** 是一款 macOS 桌面宠物应用，让你的菜单栏刘海住进一只活灵活现的小宠物 🐾。支持任意序列帧素材换肤——猫、狗、兔子，任何你喜欢的宠物形象都可以。
 
 它基于 [boring.notch](https://github.com/TheBoredTeam/boring.notch) 构建，在保留原版刘海动态岛功能（音乐控制、日历、文件暂存、HUD 替换）的基础上，新增了完整的**桌面宠物系统**：
 
@@ -147,7 +147,7 @@ open boringNotch.xcodeproj
 - [x] 活动频率 / 音效音量自定义
 - [ ] 更多行为（吃东西、玩耍、互动小游戏）
 - [ ] 皮肤市场 / 社区分享
-- [ ] 多宠物同时饲养
+- [ ] 多宠物同屏
 
 ### 继承自原版
 - [x] 音乐控制 + 可视化
@@ -171,5 +171,5 @@ open boringNotch.xcodeproj
 ---
 
 <p align="center">
-  Made with 🫶🏻 for cat lovers
+  Made with 🫶🏻 for pet lovers
 </p>
