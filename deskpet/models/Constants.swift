@@ -203,17 +203,18 @@ extension Defaults.Keys {
     static let didClearLegacyURLCacheV1 = Key<Bool>("didClearLegacyURLCache_v1", default: false)
 
     // MARK: Desktop Pet
+    // 默认值已调优为内存/CPU 最优配置：小尺寸 + 低频活动 + 慢衰减 + 低音量
     static let petEnabled = Key<Bool>("petEnabled", default: true)
     /// 自定义素材目录；为空时使用默认目录（~/Pictures/BoringPet）或内置素材
     static let petSkinDirectory = Key<String>("petSkinDirectory", default: "")
-    /// 宠物显示缩放
-    static let petScale = Key<CGFloat>("petScale", default: 1.0)
-    /// 属性衰减速度倍率（越大掉得越快）
-    static let petStatDecaySpeed = Key<Double>("petStatDecaySpeed", default: 1.0)
+    /// 宠物显示缩放（0.75 = Small，降采样帧更少，内存最低）
+    static let petScale = Key<CGFloat>("petScale", default: 0.75)
+    /// 属性衰减速度倍率（0.5 = Slow，减少 UI 刷新开销）
+    static let petStatDecaySpeed = Key<Double>("petStatDecaySpeed", default: 0.5)
     /// 音乐播放时跳舞
     static let petMusicDance = Key<Bool>("petMusicDance", default: true)
-    /// 随机走动的频率（秒）：两次行为决策之间的最短待机时长
-    static let petRoamInterval = Key<Double>("petRoamInterval", default: 10.0)
-    /// 宠物动作音效音量（0.0–1.0）：独立于系统音量，避免宠物音效过吵
-    static let petSoundVolume = Key<Double>("petSoundVolume", default: 0.7)
+    /// 随机走动的频率（秒）：30 = Chill 档，低频活动大幅降低 CPU/内存峰值
+    static let petRoamInterval = Key<Double>("petRoamInterval", default: 30.0)
+    /// 宠物动作音效音量（0.0–1.0）：0.25 低音量，不吵且保留反馈
+    static let petSoundVolume = Key<Double>("petSoundVolume", default: 0.25)
 }
