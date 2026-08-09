@@ -1,61 +1,61 @@
 {
   "images" : [
     {
-      "filename" : "notch-stage-icon2 2.png",
+      "filename" : "deskpet-icon 16.png",
       "idiom" : "mac",
       "scale" : "1x",
       "size" : "16x16"
     },
     {
-      "filename" : "notch-stage-icon2 5.png",
+      "filename" : "deskpet-icon 32.png",
       "idiom" : "mac",
       "scale" : "2x",
       "size" : "16x16"
     },
     {
-      "filename" : "notch-stage-icon2 6.png",
+      "filename" : "deskpet-icon 32.png",
       "idiom" : "mac",
       "scale" : "1x",
       "size" : "32x32"
     },
     {
-      "filename" : "notch-stage-icon2 11.png",
+      "filename" : "deskpet-icon 128.png",
       "idiom" : "mac",
       "scale" : "2x",
       "size" : "32x32"
     },
     {
-      "filename" : "notch-stage-icon2 12.png",
+      "filename" : "deskpet-icon 128.png",
       "idiom" : "mac",
       "scale" : "1x",
       "size" : "128x128"
     },
     {
-      "filename" : "notch-stage-icon2 13.png",
+      "filename" : "deskpet-icon 256.png",
       "idiom" : "mac",
       "scale" : "2x",
       "size" : "128x128"
     },
     {
-      "filename" : "notch-stage-icon2 7.png",
+      "filename" : "deskpet-icon 256.png",
       "idiom" : "mac",
       "scale" : "1x",
       "size" : "256x256"
     },
     {
-      "filename" : "notch-stage-icon2 8.png",
+      "filename" : "deskpet-icon 512.png",
       "idiom" : "mac",
       "scale" : "2x",
       "size" : "256x256"
     },
     {
-      "filename" : "notch-stage-icon2 9.png",
+      "filename" : "deskpet-icon 512.png",
       "idiom" : "mac",
       "scale" : "1x",
       "size" : "512x512"
     },
     {
-      "filename" : "notch-stage-icon2 10.png",
+      "filename" : "deskpet-icon 1024.png",
       "idiom" : "mac",
       "scale" : "2x",
       "size" : "512x512"
