@@ -196,7 +196,8 @@ final class PetSkin {
                 // preferredVariant 就能在已缓存变体间随机切换（避免一直播同一套待机）。
                 // 内存：4 变体 × 24 帧 × 0.38MB ≈ 36MB，可接受。
                 for (vi, urls) in variants.enumerated() where !urls.isEmpty {
-                    if let existing = cache[action]?[safe: vi], existing.count >= urls.count { continue }
+                    // 已有 trailer 帧（markPlayed 截断后保留的）就跳过，不重复加载
+                    if let existing = cache[action]?[safe: vi], !existing.isEmpty { continue }
                     let key = "\(action.rawValue)_\(vi)"
                     if !loading.contains(key) {
                         loading.insert(key)
@@ -204,8 +205,10 @@ final class PetSkin {
                     }
                 }
             } else {
-                // 其他动作：只加载第一个变体（与 preferredVariant 的"优先已缓存"配合，保证命中）
-                if let urls = variants.first(where: { !$0.isEmpty }) {
+                // 其他动作：只加载第一个变体。已有 trailer 帧（markPlayed 截断后保留的）就跳过。
+                if let urls = variants.first(where: { !$0.isEmpty }),
+                   cache[action]?[safe: 0]?.isEmpty != false  // 无缓存或空才加载
+                {
                     let key = "\(action.rawValue)_0"
                     if !loading.contains(key) {
                         loading.insert(key)
@@ -296,11 +299,35 @@ final class PetSkin {
     /// 物化后的动作立即受淘汰约束：只保留核心集 + 当前动作，
     /// 其他已物化动作的位图释放（否则播放过的动作无限累积物化内存）。
     /// 被淘汰的动作在回到 idle 时会被重新预取（0.8s 后台），AI 决策在 6s 后才发生，无感知延迟。
+    ///
+    /// 优化（2026-08-09）：非核心动作不再直接删除（cache[action]=nil），而是**截断到 trailerFrameCount**。
+    /// 原因：删除后 prefetch 会重新加载 trailer + 流式补齐到全量，淘汰无效，内存反复累积。
+    /// 截断保留前导帧，prefetch 看到有 trailer 就跳过不重新加载，下次播放时流式补齐。
+    /// 同时清理 loopPoints/partialLoaded/backfilling 里的孤儿条目。
     func markPlayed(_ action: PetAction) {
         played.insert(action)
         let keep = Self.coreActions.union([action])
-        cache = cache.filter { keep.contains($0.key) }
-        self.signatures = self.signatures.filter { keep.contains($0.key) }
+        // 非核心非当前动作：截断到 trailer（释放全量补齐的尾部帧）
+        for a in cache.keys where !keep.contains(a) {
+            if var variants = cache[a] {
+                for vi in variants.indices where !variants[vi].isEmpty {
+                    let trailer = min(trailerFrameCount, variants[vi].count)
+                    variants[vi] = Array(variants[vi].prefix(trailer))
+                }
+                cache[a] = variants
+            }
+            // 截断后帧不完整，重新标记为 partialLoaded（下次播放时流式补齐）
+            for vi in 0..<(variantURLs[a]?.count ?? 0) {
+                partialLoaded.insert("\(a.rawValue)_\(vi)")
+            }
+        }
+        // 清理被淘汰动作的孤儿数据（signatures 不截断——签名全量保留，loopPoint 仍可用）
+        let evicted = Set(cache.keys).subtracting(keep)
+        for a in evicted {
+            let prefix = "\(a.rawValue)_"
+            partialLoaded = partialLoaded.filter { !$0.hasPrefix(prefix) }
+            backfilling = backfilling.filter { !$0.hasPrefix(prefix) }
+        }
     }
 
     // MARK: - 流式补齐

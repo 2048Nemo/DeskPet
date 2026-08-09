@@ -10,6 +10,8 @@ import Defaults
 import SwiftUI
 
 /// 序列帧渲染视图（素材即动画，不做程序化旋转/翻转变换）
+/// 使用 .drawingGroup() 将帧渲染合并到单个 Metal 位图，避免 CoreAnimation
+/// 为每帧创建独立图层缓存（实测 739 层累积 215MB → 合并后大幅降低）。
 struct PetSpriteView: View {
     @ObservedObject var pet = PetManager.shared
 
@@ -20,6 +22,7 @@ struct PetSpriteView: View {
                     .resizable()
                     .scaledToFit()
                     .scaleEffect(x: pet.facingLeft ? -1 : 1, y: 1, anchor: .center)
+                    .drawingGroup()  // 合并到单个 Metal 位图，减少 CoreAnimation 图层累积
             } else {
                 // 无素材时的占位（默认皮肤未安装）
                 ZStack {
@@ -30,7 +33,6 @@ struct PetSpriteView: View {
                         .font(.system(size: 40))
                         .foregroundStyle(.white)
                 }
-                .shadow(color: .black.opacity(0.25), radius: 6, y: 3)
             }
         }
     }
@@ -68,7 +70,9 @@ struct PetContentView: View {
         }
         .frame(width: pet.windowSize.width, height: contentHeight)
         .contentShape(Rectangle())
-        .shadow(color: .black.opacity(0.3), radius: 8, y: 4)
+        // 去掉 .shadow()：每帧 24fps 让 CoreAnimation 生成带阴影的离屏 raster，
+        // 是 CoreAnimation 内存累积的主要来源之一（739层 215MB）。
+        // drawingGroup() 已合并渲染，宠物轮廓本身的视觉清晰度不受影响。
         .gesture(
             // 统一手势：不移动=点击（单击立即响应/双击回窝），移动=拖拽拎起
             DragGesture(minimumDistance: 0)
