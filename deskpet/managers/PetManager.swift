@@ -674,6 +674,11 @@ final class PetManager: ObservableObject {
         // 自由落体出场
         movementMode = .falling
         fallVelocity = 0
+        // 出窝：清除回窝节能模式，并确保 fall 动画能流式补齐。
+        // trimToHomeOnly 清空了 partialLoaded（包括 fall_0），
+        // 如果不重新标记，backfillIfNeeded 会因 partialLoaded 不含 fall_0 而不补齐，
+        // 导致 fall 只有 24 帧 trailer，出窝动画卡住。
+        skin?.exitHomeOnlyMode()
         setAction(.fall)
     }
 

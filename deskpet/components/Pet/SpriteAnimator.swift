@@ -397,6 +397,21 @@ final class PetSkin {
         Logger.log("trimToHomeOnly — evicted activity actions, kept: \(cache.keys.map { $0.rawValue }.sorted())", category: .memory)
     }
 
+    /// 出窝时调用：清除回窝节能模式，并重新标记 fall 的 partialLoaded。
+    /// trimToHomeOnly 清空了 partialLoaded（包括 fall_0），如果不重新标记，
+    /// backfillIfNeeded 会因 partialLoaded 不含 fall_0 而不补齐，
+    /// 导致 fall 只有 trailer 帧，出窝动画卡住。
+    func exitHomeOnlyMode() {
+        homeOnlyMode = false
+        // fall 在 trim 时被保留（cache 有帧），但 partialLoaded 被清空。
+        // 如果 fall 帧数 < 总帧数，重新标记为 partial 让 backfill 能补齐。
+        if let fallFrames = cache[.fall]?.first, !fallFrames.isEmpty,
+           let totalUrls = variantURLs[.fall]?.first, fallFrames.count < totalUrls.count {
+            partialLoaded.insert("fall_0")
+        }
+        Logger.log("exitHomeOnlyMode — homeOnlyMode cleared, fall partialLoaded restored", category: .memory)
+    }
+
     private func resolveVariant(_ action: PetAction, requested: Int) -> Int {
         guard let variants = variantURLs[action], !variants.isEmpty else { return 0 }
         if requested >= 0 && requested < variants.count { return requested }
