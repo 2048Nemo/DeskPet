@@ -875,7 +875,7 @@ struct About: View {
                 HStack(spacing: 30) {
                     Spacer(minLength: 0)
                     Button {
-                        if let url = URL(string: "https://github.com/TheBoredTeam/boring.notch") {
+                        if let url = URL(string: "https://github.com/2048Nemo/DeskPet") {
                             NSWorkspace.shared.open(url)
                         }
                     } label: {
@@ -908,7 +908,14 @@ struct About: View {
             //                openWindow(id: "onboarding")
             //            }
             //            .controlSize(.extraLarge)
-            CheckForUpdatesView(updater: updaterController.updater)
+            // 检查更新：打开 GitHub Releases 页面（ad-hoc 签名不支持 Sparkle 自动更新）
+            Button {
+                if let url = URL(string: "https://github.com/2048Nemo/DeskPet/releases") {
+                    NSWorkspace.shared.open(url)
+                }
+            } label: {
+                Label("Check for Updates…", systemImage: "arrow.down.circle")
+            }
         }
         .navigationTitle("About")
     }

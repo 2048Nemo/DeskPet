@@ -21,8 +21,11 @@ struct DynamicNotchApp: App {
     let updaterController: SPUStandardUpdaterController
 
     init() {
+        // startingUpdater: false —— 不自动检查更新（ad-hoc 签名无 Sparkle 更新源，
+        // 启动检查会弹"无法检查更新"）。更新入口改为菜单栏/设置里的
+        // "Check for Updates…" 按钮，直接打开 GitHub Releases 页面。
         updaterController = SPUStandardUpdaterController(
-            startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
+            startingUpdater: false, updaterDelegate: nil, userDriverDelegate: nil)
 
         // Initialize the settings window controller with the updater controller
         SettingsWindowController.shared.setUpdaterController(updaterController)
@@ -36,7 +39,12 @@ struct DynamicNotchApp: App {
                 }
             }
             .keyboardShortcut(KeyEquivalent(","), modifiers: .command)
-            CheckForUpdatesView(updater: updaterController.updater)
+            // 检查更新：直接打开 GitHub Releases 页面（ad-hoc 签名不支持 Sparkle 自动更新）
+            Button("Check for Updates…") {
+                if let url = URL(string: "https://github.com/2048Nemo/DeskPet/releases") {
+                    NSWorkspace.shared.open(url)
+                }
+            }
             if Defaults[.petEnabled] {
                 Divider()
                 if PetManager.shared.lifeState == .atHome {
@@ -50,7 +58,7 @@ struct DynamicNotchApp: App {
                 }
             }
             Divider()
-            Button("Restart Boring Notch") {
+            Button("Restart DeskPet") {
                 ApplicationRelauncher.restart()
             }
             Button("Quit", role: .destructive) {
