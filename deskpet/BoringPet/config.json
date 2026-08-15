@@ -1,0 +1,14 @@
+{
+  "fps": 24,
+  "scale": 0.35,
+  "actions": {
+    "idle":  { "fps": 24 },
+    "walk":  { "fps": 24 },
+    "drag":  { "fps": 24 },
+    "sleep": { "fps": 24, "loops": 1 },
+    "fall":  { "fps": 24 },
+    "happy": { "fps": 24 },
+    "hurt":  { "fps": 24 },
+    "yawn":  { "fps": 24 }
+  }
+}
