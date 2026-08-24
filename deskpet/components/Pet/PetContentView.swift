@@ -48,9 +48,14 @@ struct PetContentView: View {
     @State private var lastClickTime = Date.distantPast
     /// 操作面板在宠物上方的展开高度（窗口临时增高，宠物保持底部不动）
     private static let panelHeight: CGFloat = 78
+    /// 操作面板的最小宽度：状态行 + 两个按钮的固有宽度约 200pt。
+    /// 面板展开时窗口宽度临时扩展到 max(宠物宽度, 该值)，避免被宠物窗口宽度裁剪（issue #9）。
+    private static let panelMinWidth: CGFloat = 220
 
     var body: some View {
-        ZStack(alignment: .bottom) {
+        // bottomLeading：面板展开加宽窗口时（保持左下角 origin 不变），
+        // 宠物精灵仍锚定在原区域左下 → 视觉位置不动；面板在扩展宽度内居中。
+        ZStack(alignment: .bottomLeading) {
             PetSpriteView()
 
             // 操作面板：自绘 SwiftUI（nonactivating 面板上的 NSMenu 子菜单会闪退，
@@ -62,13 +67,14 @@ struct PetContentView: View {
                         showActionPanel = false
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .center)
                 .frame(maxHeight: .infinity, alignment: .top)
                 .padding(.top, 6)
                 .transition(.scale(scale: 0.9, anchor: .top).combined(with: .opacity))
                 .zIndex(1)
             }
         }
-        .frame(width: pet.windowSize.width, height: contentHeight)
+        .frame(width: contentWidth, height: contentHeight)
         .contentShape(Rectangle())
         // 去掉 .shadow()：每帧 24fps 让 CoreAnimation 生成带阴影的离屏 raster，
         // 是 CoreAnimation 内存累积的主要来源之一（739层 215MB）。
@@ -115,9 +121,9 @@ struct PetContentView: View {
                 }
         )
         .onChange(of: showActionPanel) { _, showing in
-            // 面板展开/收起时增高/恢复窗口（origin 不变 → 宠物视觉位置不动）
+            // 面板展开/收起时扩展/恢复窗口尺寸（origin 不变 → 宠物视觉位置不动）
             PetWindowController.shared.setContentSize(
-                NSSize(width: pet.windowSize.width, height: contentHeight)
+                NSSize(width: contentWidth, height: contentHeight)
             )
         }
         .onAppear {
@@ -161,6 +167,12 @@ struct PetContentView: View {
     /// 窗口内容高度：宠物高度 + 面板展开高度
     private var contentHeight: CGFloat {
         pet.windowSize.height + (showActionPanel ? Self.panelHeight : 0)
+    }
+
+    /// 窗口内容宽度：面板展开时扩展到面板最小宽度，收起时恢复宠物宽度。
+    /// 无皮肤兜底 90pt 窗口放不下 ~200pt 的面板 → 面板被裁剪（issue #9）。
+    private var contentWidth: CGFloat {
+        max(pet.windowSize.width, showActionPanel ? Self.panelMinWidth : 0)
     }
 
     /// 根据状态生成情绪 emoji

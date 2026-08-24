@@ -303,7 +303,9 @@ final class PetManager: ObservableObject {
             fallVelocity += gravity * CGFloat(tick)
             var position = windowPosition ?? initialRoamingPosition()
             position.y -= fallVelocity * CGFloat(tick)
-            let floorY = (currentScreen?.frame.minY ?? 0) + windowSize.height * 0.06
+            // 落地上限用 visibleFrame（排除 Dock/菜单栏区域）：
+            // frame.minY 位于 Dock 后面，宠物会掉进 Dock 区域被盖住、无法拖出（issue #10）
+            let floorY = (currentScreen?.visibleFrame.minY ?? 0) + windowSize.height * 0.06
             if position.y <= floorY {
                 position.y = floorY
                 windowPosition = position
@@ -505,14 +507,16 @@ final class PetManager: ObservableObject {
 
     /// 在当前屏内随机选一个走动目标（避开顶部刘海区与底部 Dock 区）。
     /// 强制目标至少离当前位置 20% 屏宽，避免"刚走两步就停下"的短促切换。
+    /// Y 范围基于 visibleFrame（排除 Dock/菜单栏），避免走到底部被 Dock 盖住（issue #10）。
     private func randomWalkTarget() -> CGPoint? {
         guard let screen = currentScreen else { return nil }
         let frame = screen.frame
+        let visible = screen.visibleFrame
         let size = windowSize
         let minX = frame.minX + frame.width * 0.06
         let maxX = frame.maxX - frame.width * 0.06 - size.width
-        let minY = frame.minY + frame.height * 0.10
-        let maxY = frame.minY + frame.height * 0.60
+        let minY = visible.minY + visible.height * 0.10
+        let maxY = visible.minY + visible.height * 0.60
         guard maxX > minX, maxY > minY else { return nil }
 
         let current = windowPosition ?? CGPoint(x: frame.midX, y: frame.midY)

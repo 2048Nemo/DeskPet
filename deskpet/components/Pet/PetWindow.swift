@@ -33,7 +33,10 @@ final class PetWindowController {
             defer: false
         )
         panel.isFloatingPanel = true
-        panel.level = .floating
+        // 层级高于 Dock（kCGDockWindowLevel=20）：用 .mainMenu+1（25），
+        // 保证宠物走到屏幕底部/掉落到 Dock 区时不被 Dock 盖住、可拖出（issue #10）。
+        // 仍低于刘海窗口（.mainMenu+3=27），拖拽投放时由 elevateLevel() 临时提级盖过刘海。
+        panel.level = .mainMenu + 1
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = false
@@ -104,8 +107,9 @@ final class PetWindowController {
     }
 
     /// 恢复宠物窗口默认层级（与 elevateLevel 配对）。
+    /// 默认层级为 .mainMenu+1（高于 Dock，低于刘海），与 show() 的初始设置一致。
     func restoreLevel() {
-        window?.level = .floating
+        window?.level = .mainMenu + 1
     }
 
     /// 调整窗口内容尺寸（保持左下角 origin 不变 → 宠物视觉位置不动，面板向上展开）
