@@ -23,7 +23,7 @@ jobs:
     runs-on: macos-latest
     steps:
     - name: Code Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
 
     - name: Select latest Xcode
       run: |
